@@ -84,7 +84,7 @@ class TestCheck(support.TempdirManager):
             # (the spec allows these fields to take the form "Name <email>")
             metadata = {
                 'url': 'xxx',
-                kind + '_email': 'Name <name@email.com>',
+                f'{kind}_email': 'Name <name@email.com>',
                 'name': 'xxx',
                 'version': 'xxx',
             }
@@ -92,13 +92,13 @@ class TestCheck(support.TempdirManager):
             assert cmd._warnings == 0
 
             # the check should not warn if only email is given
-            metadata[kind + '_email'] = 'name@email.com'
+            metadata[f'{kind}_email'] = 'name@email.com'
             cmd = self._run(metadata)
             assert cmd._warnings == 0
 
             # the check should not warn if only the name is given
             metadata[kind] = "Name"
-            del metadata[kind + '_email']
+            del metadata[f'{kind}_email']
             cmd = self._run(metadata)
             assert cmd._warnings == 0
 

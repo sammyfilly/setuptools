@@ -470,20 +470,13 @@ def _parse_letter_version(
             letter = "a"
         elif letter == "beta":
             letter = "b"
-        elif letter in ["c", "pre", "preview"]:
+        elif letter in {"c", "pre", "preview"}:
             letter = "rc"
-        elif letter in ["rev", "r"]:
+        elif letter in {"rev", "r"}:
             letter = "post"
 
         return letter, int(number)
-    if not letter and number:
-        # We assume if we are given a number, but we are not given a letter
-        # then this is using the implicit post release syntax (e.g. 1.0-1)
-        letter = "post"
-
-        return letter, int(number)
-
-    return None
+    return ("post", int(number)) if number else None
 
 
 _local_version_separators = re.compile(r"[\._-]")
@@ -533,19 +526,9 @@ def _cmpkey(
         _pre = pre
 
     # Versions without a post segment should sort before those with one.
-    if post is None:
-        _post: PrePostDevType = NegativeInfinity
-
-    else:
-        _post = post
-
+    _post = NegativeInfinity if post is None else post
     # Versions without a development segment should sort after those with one.
-    if dev is None:
-        _dev: PrePostDevType = Infinity
-
-    else:
-        _dev = dev
-
+    _dev = Infinity if dev is None else dev
     if local is None:
         # Versions without a local segment should sort before those with one.
         _local: LocalType = NegativeInfinity

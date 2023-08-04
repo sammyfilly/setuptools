@@ -97,14 +97,10 @@ class Command:
 
     # XXX A more explicit way to customize dry_run would be better.
     def __getattr__(self, attr):
-        if attr == 'dry_run':
-            myval = getattr(self, "_" + attr)
-            if myval is None:
-                return getattr(self.distribution, attr)
-            else:
-                return myval
-        else:
+        if attr != 'dry_run':
             raise AttributeError(attr)
+        myval = getattr(self, f"_{attr}")
+        return getattr(self.distribution, attr) if myval is None else myval
 
     def ensure_finalized(self):
         if not self.finalized:
@@ -135,7 +131,7 @@ class Command:
         This method must be implemented by all command classes.
         """
         raise RuntimeError(
-            "abstract method -- subclass %s must override" % self.__class__
+            f"abstract method -- subclass {self.__class__} must override"
         )
 
     def finalize_options(self):
@@ -150,22 +146,22 @@ class Command:
         This method must be implemented by all command classes.
         """
         raise RuntimeError(
-            "abstract method -- subclass %s must override" % self.__class__
+            f"abstract method -- subclass {self.__class__} must override"
         )
 
     def dump_options(self, header=None, indent=""):
         from distutils.fancy_getopt import longopt_xlate
 
         if header is None:
-            header = "command options for '%s':" % self.get_command_name()
+            header = f"command options for '{self.get_command_name()}':"
         self.announce(indent + header, level=logging.INFO)
-        indent = indent + "  "
+        indent = f"{indent}  "
         for option, _, _ in self.user_options:
             option = option.translate(longopt_xlate)
             if option[-1] == "=":
                 option = option[:-1]
             value = getattr(self, option)
-            self.announce(indent + "{} = {}".format(option, value), level=logging.INFO)
+            self.announce(f"{indent}{option} = {value}", level=logging.INFO)
 
     def run(self):
         """A command's raison d'etre: carry out the action it exists to
@@ -178,7 +174,7 @@ class Command:
         This method must be implemented by all command classes.
         """
         raise RuntimeError(
-            "abstract method -- subclass %s must override" % self.__class__
+            f"abstract method -- subclass {self.__class__} must override"
         )
 
     def announce(self, msg, level=logging.DEBUG):
@@ -213,9 +209,7 @@ class Command:
             setattr(self, option, default)
             return default
         elif not isinstance(val, str):
-            raise DistutilsOptionError(
-                "'{}' must be a {} (got `{}`)".format(option, what, val)
-            )
+            raise DistutilsOptionError(f"'{option}' must be a {what} (got `{val}`)")
         return val
 
     def ensure_string(self, option, default=None):
@@ -236,10 +230,7 @@ class Command:
         elif isinstance(val, str):
             setattr(self, option, re.split(r',\s*|\s+', val))
         else:
-            if isinstance(val, list):
-                ok = all(isinstance(v, str) for v in val)
-            else:
-                ok = False
+            ok = all(isinstance(v, str) for v in val) if isinstance(val, list) else False
             if not ok:
                 raise DistutilsOptionError(
                     "'{}' must be a list of strings (got {!r})".format(option, val)
@@ -249,7 +240,7 @@ class Command:
         val = self._ensure_stringlike(option, what, default)
         if val is not None and not tester(val):
             raise DistutilsOptionError(
-                ("error in '%s' option: " + error_fmt) % (option, val)
+                f"error in '%s' option: {error_fmt}" % (option, val)
             )
 
     def ensure_filename(self, option):
@@ -324,11 +315,11 @@ class Command:
         a method that we call to determine if the subcommand needs to be
         run for the current distribution.  Return a list of command names.
         """
-        commands = []
-        for cmd_name, method in self.sub_commands:
-            if method is None or method(self):
-                commands.append(cmd_name)
-        return commands
+        return [
+            cmd_name
+            for cmd_name, method in self.sub_commands
+            if method is None or method(self)
+        ]
 
     # -- External world manipulation -----------------------------------
 
@@ -414,7 +405,7 @@ class Command:
         timestamp checks.
         """
         if skip_msg is None:
-            skip_msg = "skipping %s (inputs unchanged)" % outfile
+            skip_msg = f"skipping {outfile} (inputs unchanged)"
 
         # Allow 'infiles' to be a single string
         if isinstance(infiles, str):
@@ -423,7 +414,7 @@ class Command:
             raise TypeError("'infiles' must be a string, or a list or tuple of strings")
 
         if exec_msg is None:
-            exec_msg = "generating {} from {}".format(outfile, ', '.join(infiles))
+            exec_msg = f"generating {outfile} from {', '.join(infiles)}"
 
         # If 'outfile' must be regenerated (either because it doesn't
         # exist, is out-of-date, or the 'force' flag is true) then

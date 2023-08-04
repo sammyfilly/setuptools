@@ -127,7 +127,7 @@ class TestSDist(BasePyPIRCCommandTestCase):
             'somecode/',
             'somecode/__init__.py',
         ]
-        assert sorted(content) == ['fake-1.0/' + x for x in expected]
+        assert sorted(content) == [f'fake-1.0/{x}' for x in expected]
 
     @pytest.mark.usefixtures('needs_zlib')
     @pytest.mark.skipif("not find_executable('tar')")
@@ -239,7 +239,7 @@ class TestSDist(BasePyPIRCCommandTestCase):
             'somecode/doc.dat',
             'somecode/doc.txt',
         ]
-        assert sorted(content) == ['fake-1.0/' + x for x in expected]
+        assert sorted(content) == [f'fake-1.0/{x}' for x in expected]
 
         # checking the MANIFEST
         f = open(join(self.tmp_dir, 'MANIFEST'))

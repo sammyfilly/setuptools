@@ -257,7 +257,7 @@ class TestSysconfig:
             universal_newlines=True,
         )
         outs, errs = p.communicate()
-        assert 0 == p.returncode, "Subprocess failed: " + outs
+        assert 0 == p.returncode, f"Subprocess failed: {outs}"
 
     def test_parse_config_h(self):
         config_h = sysconfig.get_config_h_filename()

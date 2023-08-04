@@ -99,23 +99,19 @@ class check(Command):
         """
         metadata = self.distribution.metadata
 
-        missing = []
-        for attr in 'name', 'version':
-            if not getattr(metadata, attr, None):
-                missing.append(attr)
-
-        if missing:
-            self.warn("missing required meta-data: %s" % ', '.join(missing))
+        if missing := [
+            attr
+            for attr in ('name', 'version')
+            if not getattr(metadata, attr, None)
+        ]:
+            self.warn(f"missing required meta-data: {', '.join(missing)}")
 
     def check_restructuredtext(self):
         """Checks if the long string fields are reST-compliant."""
         data = self.distribution.get_long_description()
         for warning in self._check_rst_data(data):
             line = warning[-1].get('line')
-            if line is None:
-                warning = warning[1]
-            else:
-                warning = '{} (line {})'.format(warning[1], line)
+            warning = warning[1] if line is None else f'{warning[1]} (line {line})'
             self.warn(warning)
 
     def _check_rst_data(self, data):
@@ -144,8 +140,6 @@ class check(Command):
         try:
             parser.parse(data, document)
         except AttributeError as e:
-            reporter.messages.append(
-                (-1, 'Could not finish the parsing: %s.' % e, '', {})
-            )
+            reporter.messages.append((-1, f'Could not finish the parsing: {e}.', '', {}))
 
         return reporter.messages

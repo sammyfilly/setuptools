@@ -37,9 +37,7 @@ def _get_gid(name):
         result = getgrnam(name)
     except KeyError:
         result = None
-    if result is not None:
-        return result[2]
-    return None
+    return result[2] if result is not None else None
 
 
 def _get_uid(name):
@@ -50,9 +48,7 @@ def _get_uid(name):
         result = getpwnam(name)
     except KeyError:
         result = None
-    if result is not None:
-        return result[2]
-    return None
+    return result[2] if result is not None else None
 
 
 def make_tarball(
@@ -89,7 +85,7 @@ def make_tarball(
             "'xz' or 'compress'"
         )
 
-    archive_name = base_name + '.tar'
+    archive_name = f'{base_name}.tar'
     if compress != 'compress':
         archive_name += compress_ext.get(compress, '')
 
@@ -113,7 +109,7 @@ def make_tarball(
         return tarinfo
 
     if not dry_run:
-        tar = tarfile.open(archive_name, 'w|%s' % tar_compression[compress])
+        tar = tarfile.open(archive_name, f'w|{tar_compression[compress]}')
         try:
             tar.add(base_dir, filter=_set_uid_gid)
         finally:
@@ -134,7 +130,7 @@ def make_tarball(
     return archive_name
 
 
-def make_zipfile(base_name, base_dir, verbose=0, dry_run=0):  # noqa: C901
+def make_zipfile(base_name, base_dir, verbose=0, dry_run=0):    # noqa: C901
     """Create a zip file from all the files under 'base_dir'.
 
     The output zip file will be named 'base_name' + ".zip".  Uses either the
@@ -143,17 +139,13 @@ def make_zipfile(base_name, base_dir, verbose=0, dry_run=0):  # noqa: C901
     available, raises DistutilsExecError.  Returns the name of the output zip
     file.
     """
-    zip_filename = base_name + ".zip"
+    zip_filename = f"{base_name}.zip"
     mkpath(os.path.dirname(zip_filename), dry_run=dry_run)
 
     # If zipfile module is not available, try spawning an external
     # 'zip' command.
     if zipfile is None:
-        if verbose:
-            zipoptions = "-r"
-        else:
-            zipoptions = "-rq"
-
+        zipoptions = "-r" if verbose else "-rq"
         try:
             spawn(["zip", zipoptions, zip_filename, base_dir], dry_run=dry_run)
         except DistutilsExecError:
@@ -213,10 +205,9 @@ def check_archive_formats(formats):
 
     If all formats are known, returns None
     """
-    for format in formats:
-        if format not in ARCHIVE_FORMATS:
-            return format
-    return None
+    return next(
+        (format for format in formats if format not in ARCHIVE_FORMATS), None
+    )
 
 
 def make_archive(
@@ -260,7 +251,7 @@ def make_archive(
     try:
         format_info = ARCHIVE_FORMATS[format]
     except KeyError:
-        raise ValueError("unknown archive format '%s'" % format)
+        raise ValueError(f"unknown archive format '{format}'")
 
     func = format_info[0]
     for arg, val in format_info[1]:

@@ -95,9 +95,9 @@ class TextFile:
                 setattr(self, opt, self.default_options[opt])
 
         # sanity check client option hash
-        for opt in options.keys():
+        for opt in options:
             if opt not in self.default_options:
-                raise KeyError("invalid TextFile option '%s'" % opt)
+                raise KeyError(f"invalid TextFile option '{opt}'")
 
         if file is None:
             self.open(filename)
@@ -128,10 +128,9 @@ class TextFile:
         file.close()
 
     def gen_error(self, msg, line=None):
-        outmsg = []
         if line is None:
             line = self.current_line
-        outmsg.append(self.filename + ", ")
+        outmsg = [f"{self.filename}, "]
         if isinstance(line, (list, tuple)):
             outmsg.append("lines %d-%d: " % tuple(line))
         else:
@@ -140,7 +139,7 @@ class TextFile:
         return "".join(outmsg)
 
     def error(self, msg, line=None):
-        raise ValueError("error: " + self.gen_error(msg, line))
+        raise ValueError(f"error: {self.gen_error(msg, line)}")
 
     def warn(self, msg, line=None):
         """Print (to stderr) a warning message tied to the current logical
@@ -150,9 +149,9 @@ class TextFile:
         the current line number; it may be a list or tuple to indicate a
         range of physical lines, or an integer for a single physical
         line."""
-        sys.stderr.write("warning: " + self.gen_error(msg, line) + "\n")
+        sys.stderr.write(f"warning: {self.gen_error(msg, line)}" + "\n")
 
-    def readline(self):  # noqa: C901
+    def readline(self):    # noqa: C901
         """Read and return a single logical line from the current file (or
         from an internal buffer if lines have previously been "unread"
         with 'unreadline()').  If the 'join_lines' option is true, this
@@ -192,8 +191,6 @@ class TextFile:
                 if pos == -1:  # no "#" -- no comments
                     pass
 
-                # It's definitely a comment -- either "#" is the first
-                # character, or it's elsewhere and unescaped.
                 elif pos == 0 or line[pos - 1] != "\\":
                     # Have to preserve the trailing newline, because it's
                     # the job of a later step (rstrip_ws) to remove it --
@@ -201,8 +198,8 @@ class TextFile:
                     # (NB. this means that if the final line is all comment
                     # and has no trailing newline, we will think that it's
                     # EOF; I think that's OK.)
-                    eol = (line[-1] == '\n') and '\n' or ''
-                    line = line[0:pos] + eol
+                    eol = '\n' if line[-1] == '\n' else ''
+                    line = line[:pos] + eol
 
                     # If all that's left is whitespace, then skip line
                     # *now*, before we try to join it to 'buildup_line' --
@@ -232,17 +229,16 @@ class TextFile:
                     self.current_line[1] = self.current_line[1] + 1
                 else:
                     self.current_line = [self.current_line, self.current_line + 1]
-            # just an ordinary line, read it as usual
+            elif line is None:  # eof
+                return None
+
             else:
-                if line is None:  # eof
-                    return None
-
                 # still have to be careful about incrementing the line number!
-                if isinstance(self.current_line, list):
-                    self.current_line = self.current_line[1] + 1
-                else:
-                    self.current_line = self.current_line + 1
-
+                self.current_line = (
+                    self.current_line[1] + 1
+                    if isinstance(self.current_line, list)
+                    else self.current_line + 1
+                )
             # strip whitespace however the client wants (leading and
             # trailing, or one or the other, or neither)
             if self.lstrip_ws and self.rstrip_ws:
@@ -263,7 +259,7 @@ class TextFile:
                     continue
 
                 if line[-2:] == '\\\n':
-                    buildup_line = line[0:-2] + '\n'
+                    buildup_line = line[:-2] + '\n'
                     continue
 
             # well, I guess there's some actual content there: return it

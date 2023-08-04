@@ -62,8 +62,7 @@ class FileList:
         # Not a strict lexical sort!
         sortable_files = sorted(map(os.path.split, self.files))
         self.files = []
-        for sort_tuple in sortable_files:
-            self.files.append(os.path.join(*sort_tuple))
+        self.files.extend(os.path.join(*sort_tuple) for sort_tuple in sortable_files)
 
     # Other miscellaneous utility methods
 
@@ -83,25 +82,21 @@ class FileList:
 
         if action in ('include', 'exclude', 'global-include', 'global-exclude'):
             if len(words) < 2:
-                raise DistutilsTemplateError(
-                    "'%s' expects <pattern1> <pattern2> ..." % action
-                )
+                raise DistutilsTemplateError(f"'{action}' expects <pattern1> <pattern2> ...")
             patterns = [convert_path(w) for w in words[1:]]
         elif action in ('recursive-include', 'recursive-exclude'):
             if len(words) < 3:
                 raise DistutilsTemplateError(
-                    "'%s' expects <dir> <pattern1> <pattern2> ..." % action
+                    f"'{action}' expects <dir> <pattern1> <pattern2> ..."
                 )
             dir = convert_path(words[1])
             patterns = [convert_path(w) for w in words[2:]]
         elif action in ('graft', 'prune'):
             if len(words) != 2:
-                raise DistutilsTemplateError(
-                    "'%s' expects a single <dir_pattern>" % action
-                )
+                raise DistutilsTemplateError(f"'{action}' expects a single <dir_pattern>")
             dir_pattern = convert_path(words[1])
         else:
-            raise DistutilsTemplateError("unknown action '%s'" % action)
+            raise DistutilsTemplateError(f"unknown action '{action}'")
 
         return (action, patterns, dir, dir_pattern)
 
@@ -159,7 +154,7 @@ class FileList:
                     )
 
         elif action == 'recursive-include':
-            self.debug_print("recursive-include {} {}".format(dir, ' '.join(patterns)))
+            self.debug_print(f"recursive-include {dir} {' '.join(patterns)}")
             for pattern in patterns:
                 if not self.include_pattern(pattern, prefix=dir):
                     msg = (
@@ -168,7 +163,7 @@ class FileList:
                     log.warning(msg, pattern, dir)
 
         elif action == 'recursive-exclude':
-            self.debug_print("recursive-exclude {} {}".format(dir, ' '.join(patterns)))
+            self.debug_print(f"recursive-exclude {dir} {' '.join(patterns)}")
             for pattern in patterns:
                 if not self.exclude_pattern(pattern, prefix=dir):
                     log.warning(
@@ -181,21 +176,19 @@ class FileList:
                     )
 
         elif action == 'graft':
-            self.debug_print("graft " + dir_pattern)
+            self.debug_print(f"graft {dir_pattern}")
             if not self.include_pattern(None, prefix=dir_pattern):
                 log.warning("warning: no directories found matching '%s'", dir_pattern)
 
         elif action == 'prune':
-            self.debug_print("prune " + dir_pattern)
+            self.debug_print(f"prune {dir_pattern}")
             if not self.exclude_pattern(None, prefix=dir_pattern):
                 log.warning(
                     ("no previously-included directories found " "matching '%s'"),
                     dir_pattern,
                 )
         else:
-            raise DistutilsInternalError(
-                "this cannot happen: invalid action '%s'" % action
-            )
+            raise DistutilsInternalError(f"this cannot happen: invalid action '{action}'")
 
     # Filtering/selection methods
 
@@ -227,7 +220,7 @@ class FileList:
         # XXX docstring lying about what the special chars are?
         files_found = False
         pattern_re = translate_pattern(pattern, anchor, prefix, is_regex)
-        self.debug_print("include_pattern: applying regex r'%s'" % pattern_re.pattern)
+        self.debug_print(f"include_pattern: applying regex r'{pattern_re.pattern}'")
 
         # delayed loading of allfiles list
         if self.allfiles is None:
@@ -235,7 +228,7 @@ class FileList:
 
         for name in self.allfiles:
             if pattern_re.search(name):
-                self.debug_print(" adding " + name)
+                self.debug_print(f" adding {name}")
                 self.files.append(name)
                 files_found = True
         return files_found
@@ -249,10 +242,10 @@ class FileList:
         """
         files_found = False
         pattern_re = translate_pattern(pattern, anchor, prefix, is_regex)
-        self.debug_print("exclude_pattern: applying regex r'%s'" % pattern_re.pattern)
+        self.debug_print(f"exclude_pattern: applying regex r'{pattern_re.pattern}'")
         for i in range(len(self.files) - 1, -1, -1):
             if pattern_re.search(self.files[i]):
-                self.debug_print(" removing " + self.files[i])
+                self.debug_print(f" removing {self.files[i]}")
                 del self.files[i]
                 files_found = True
         return files_found
@@ -341,11 +334,7 @@ def translate_pattern(pattern, anchor=1, prefix=None, is_regex=0):
     or just returned as-is (assumes it's a regex object).
     """
     if is_regex:
-        if isinstance(pattern, str):
-            return re.compile(pattern)
-        else:
-            return pattern
-
+        return re.compile(pattern) if isinstance(pattern, str) else pattern
     # ditch start and end characters
     start, _, end = glob_to_re('_').partition('_')
 
@@ -363,9 +352,8 @@ def translate_pattern(pattern, anchor=1, prefix=None, is_regex=0):
         if os.sep == '\\':
             sep = r'\\'
         pattern_re = pattern_re[len(start) : len(pattern_re) - len(end)]
-        pattern_re = r'{}\A{}{}.*{}{}'.format(start, prefix_re, sep, pattern_re, end)
-    else:  # no prefix -- respect anchor flag
-        if anchor:
-            pattern_re = r'{}\A{}'.format(start, pattern_re[len(start) :])
+        pattern_re = f'{start}\A{prefix_re}{sep}.*{pattern_re}{end}'
+    elif anchor:
+        pattern_re = f'{start}\A{pattern_re[len(start):]}'
 
     return re.compile(pattern_re)

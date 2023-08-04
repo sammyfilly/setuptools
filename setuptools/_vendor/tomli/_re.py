@@ -102,6 +102,6 @@ def match_to_localtime(match: re.Match) -> time:
 
 
 def match_to_number(match: re.Match, parse_float: ParseFloat) -> Any:
-    if match.group("floatpart"):
+    if match["floatpart"]:
         return parse_float(match.group())
     return int(match.group(), 0)

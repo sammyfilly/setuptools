@@ -64,9 +64,7 @@ class TestUnixCCompiler(support.TempdirManager):
 
         def make_darwin_gcv(syscfg_macosx_ver):
             def gcv(var):
-                if var == darwin_ver_var:
-                    return syscfg_macosx_ver
-                return "xxx"
+                return syscfg_macosx_ver if var == darwin_ver_var else "xxx"
 
             return gcv
 
@@ -93,9 +91,7 @@ class TestUnixCCompiler(support.TempdirManager):
             if expected_flag is not None:
                 assert self.cc.rpath_foo() == expected_flag, msg
             else:
-                with pytest.raises(
-                    DistutilsPlatformError, match=darwin_ver_var + r' mismatch'
-                ):
+                with pytest.raises(DistutilsPlatformError, match=f'{darwin_ver_var} mismatch'):
                     self.cc.rpath_foo()
 
             # Restore
@@ -222,9 +218,7 @@ class TestUnixCCompiler(support.TempdirManager):
             return 'gcc-4.2'
 
         def gcvs(*args, _orig=sysconfig.get_config_vars):
-            if args:
-                return list(map(sysconfig.get_config_var, args))
-            return _orig()
+            return list(map(sysconfig.get_config_var, args)) if args else _orig()
 
         sysconfig.get_config_var = gcv
         sysconfig.get_config_vars = gcvs
@@ -251,24 +245,22 @@ class TestUnixCCompiler(support.TempdirManager):
             return 'gcc-4.2'
 
         def gcvs(*args, _orig=sysconfig.get_config_vars):
-            if args:
-                return list(map(sysconfig.get_config_var, args))
-            return _orig()
+            return list(map(sysconfig.get_config_var, args)) if args else _orig()
 
         sysconfig.get_config_var = gcv
         sysconfig.get_config_vars = gcvs
-        with mock.patch.object(
-            self.cc, 'spawn', return_value=None
-        ) as mock_spawn, mock.patch.object(
-            self.cc, '_need_link', return_value=True
-        ), mock.patch.object(
-            self.cc, 'mkpath', return_value=None
-        ), EnvironmentVarGuard() as env:
+        with (mock.patch.object(
+                self.cc, 'spawn', return_value=None
+            ) as mock_spawn, mock.patch.object(
+                self.cc, '_need_link', return_value=True
+            ), mock.patch.object(
+                self.cc, 'mkpath', return_value=None
+            ), EnvironmentVarGuard() as env):
             env['CC'] = 'ccache my_cc'
             env['CXX'] = 'my_cxx'
             del env['LDSHARED']
             sysconfig.customize_compiler(self.cc)
-            assert self.cc.linker_so[0:2] == ['ccache', 'my_cc']
+            assert self.cc.linker_so[:2] == ['ccache', 'my_cc']
             self.cc.link(None, [], 'a.out', target_lang='c++')
             call_args = mock_spawn.call_args[0][0]
             expected = ['my_cxx', '-bundle', '-undefined', 'dynamic_lookup']
@@ -285,9 +277,7 @@ class TestUnixCCompiler(support.TempdirManager):
             return 'gcc-4.2'
 
         def gcvs(*args, _orig=sysconfig.get_config_vars):
-            if args:
-                return list(map(sysconfig.get_config_var, args))
-            return _orig()
+            return list(map(sysconfig.get_config_var, args)) if args else _orig()
 
         sysconfig.get_config_var = gcv
         sysconfig.get_config_vars = gcvs

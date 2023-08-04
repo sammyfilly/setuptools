@@ -115,8 +115,7 @@ class VersionPredicate:
         if not match:
             raise ValueError("bad package name in %r" % versionPredicateStr)
         self.name, paren = match.groups()
-        paren = paren.strip()
-        if paren:
+        if paren := paren.strip():
             match = re_paren.match(paren)
             if not match:
                 raise ValueError("expected parenthesized list: %r" % paren)
@@ -128,21 +127,17 @@ class VersionPredicate:
             self.pred = []
 
     def __str__(self):
-        if self.pred:
-            seq = [cond + " " + str(ver) for cond, ver in self.pred]
-            return self.name + " (" + ", ".join(seq) + ")"
-        else:
+        if not self.pred:
             return self.name
+        seq = [f"{cond} {str(ver)}" for cond, ver in self.pred]
+        return f"{self.name} (" + ", ".join(seq) + ")"
 
     def satisfied_by(self, version):
         """True if version is compatible with all the predicates in self.
         The parameter version must be acceptable to the StrictVersion
         constructor.  It may be either a string or StrictVersion.
         """
-        for cond, ver in self.pred:
-            if not compmap[cond](version, ver):
-                return False
-        return True
+        return all(compmap[cond](version, ver) for cond, ver in self.pred)
 
 
 _provision_rx = None

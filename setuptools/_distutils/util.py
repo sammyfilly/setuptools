@@ -79,8 +79,7 @@ def get_macosx_target_ver_from_syscfg():
     if _syscfg_macosx_ver is None:
         from distutils import sysconfig
 
-        ver = sysconfig.get_config_var(MACOSX_VERSION_VAR) or ''
-        if ver:
+        if ver := sysconfig.get_config_var(MACOSX_VERSION_VAR) or '':
             _syscfg_macosx_ver = ver
     return _syscfg_macosx_ver
 
@@ -93,9 +92,7 @@ def get_macosx_target_ver():
     variable. If neither source has a value, then None is returned"""
 
     syscfg_ver = get_macosx_target_ver_from_syscfg()
-    env_ver = os.environ.get(MACOSX_VERSION_VAR)
-
-    if env_ver:
+    if env_ver := os.environ.get(MACOSX_VERSION_VAR):
         # Validate overridden version against sysconfig version, if have both.
         # Ensure that the deployment target of the build process is not less
         # than 10.3 if the interpreter was built for 10.3 or later.  This
@@ -108,9 +105,8 @@ def get_macosx_target_ver():
             and split_version(env_ver) < [10, 3]
         ):
             my_msg = (
-                '$' + MACOSX_VERSION_VAR + ' mismatch: '
-                'now "%s" but "%s" during configure; '
-                'must use 10.3 or later' % (env_ver, syscfg_ver)
+                f'${MACOSX_VERSION_VAR}'
+                + f' mismatch: now "{env_ver}" but "{syscfg_ver}" during configure; must use 10.3 or later'
             )
             raise DistutilsPlatformError(my_msg)
         return env_ver
@@ -136,16 +132,14 @@ def convert_path(pathname):
     if not pathname:
         return pathname
     if pathname[0] == '/':
-        raise ValueError("path '%s' cannot be absolute" % pathname)
+        raise ValueError(f"path '{pathname}' cannot be absolute")
     if pathname[-1] == '/':
-        raise ValueError("path '%s' cannot end with '/'" % pathname)
+        raise ValueError(f"path '{pathname}' cannot end with '/'")
 
     paths = pathname.split('/')
     while '.' in paths:
         paths.remove('.')
-    if not paths:
-        return os.curdir
-    return os.path.join(*paths)
+    return os.curdir if not paths else os.path.join(*paths)
 
 
 # convert_path ()
@@ -157,18 +151,18 @@ def change_root(new_root, pathname):
     Otherwise, it requires making 'pathname' relative and then joining the
     two, which is tricky on DOS/Windows and Mac OS.
     """
-    if os.name == 'posix':
-        if not os.path.isabs(pathname):
-            return os.path.join(new_root, pathname)
-        else:
-            return os.path.join(new_root, pathname[1:])
-
-    elif os.name == 'nt':
+    if os.name == 'nt':
         (drive, path) = os.path.splitdrive(pathname)
         if path[0] == '\\':
             path = path[1:]
         return os.path.join(new_root, path)
 
+    elif os.name == 'posix':
+        return (
+            os.path.join(new_root, pathname)
+            if not os.path.isabs(pathname)
+            else os.path.join(new_root, pathname[1:])
+        )
     raise DistutilsPlatformError(f"nothing known about platform '{os.name}'")
 
 
@@ -207,7 +201,7 @@ def subst_vars(s, local_vars):
     """
     check_environ()
     lookup = dict(os.environ)
-    lookup.update((name, str(value)) for name, value in local_vars.items())
+    lookup |= ((name, str(value)) for name, value in local_vars.items())
     try:
         return _subst_compat(s).format_map(lookup)
     except KeyError as var:
@@ -302,7 +296,7 @@ def split_quoted(s):
                 raise RuntimeError("this can't happen (bad char '%c')" % s[end])
 
             if m is None:
-                raise ValueError("bad string (mismatched %s quotes?)" % s[end])
+                raise ValueError(f"bad string (mismatched {s[end]} quotes?)")
 
             (beg, end) = m.span()
             s = s[:beg] + s[beg + 1 : end - 1] + s[end:]
@@ -329,8 +323,8 @@ def execute(func, args, msg=None, verbose=0, dry_run=0):
     """
     if msg is None:
         msg = "{}{!r}".format(func.__name__, args)
-        if msg[-2:] == ',)':  # correct for singleton tuple
-            msg = msg[0:-2] + ')'
+        if msg.endswith(',)'):  # correct for singleton tuple
+            msg = f'{msg[:-2]})'
 
     log.info(msg)
     if not dry_run:
@@ -460,12 +454,8 @@ byte_compile(files, optimize=%r, force=%r,
         cmd.extend(subprocess._optim_args_from_interpreter_flags())
         cmd.append(script_name)
         spawn(cmd, dry_run=dry_run)
-        execute(os.remove, (script_name,), "removing %s" % script_name, dry_run=dry_run)
+        execute(os.remove, (script_name,), f"removing {script_name}", dry_run=dry_run)
 
-    # "Direct" byte-compilation: use the py_compile module to compile
-    # right here, right now.  Note that the script generated in indirect
-    # mode simply calls 'byte_compile()' in direct mode, a weird sort of
-    # cross-process recursion.  Hey, it works!
     else:
         from py_compile import compile
 

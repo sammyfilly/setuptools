@@ -90,12 +90,14 @@ def _android_folder() -> str | None:
     except Exception:
         # if fails find an android folder looking path on the sys.path
         pattern = re.compile(r"/data/(data|user/\d+)/(.+)/files")
-        for path in sys.path:
-            if pattern.match(path):
-                result = path.split("/files")[0]
-                break
-        else:
-            result = None
+        result = next(
+            (
+                path.split("/files")[0]
+                for path in sys.path
+                if pattern.match(path)
+            ),
+            None,
+        )
     return result
 
 

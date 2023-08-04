@@ -168,8 +168,7 @@ class CCompiler:
         for key in kwargs:
             if key not in self.executables:
                 raise ValueError(
-                    "unknown executable '%s' for class %s"
-                    % (key, self.__class__.__name__)
+                    f"unknown executable '{key}' for class {self.__class__.__name__}"
                 )
             self.set_executable(key, kwargs[key])
 
@@ -180,12 +179,7 @@ class CCompiler:
             setattr(self, key, value)
 
     def _find_macro(self, name):
-        i = 0
-        for defn in self.macros:
-            if defn[0] == name:
-                return i
-            i += 1
-        return None
+        return next((i for i, defn in enumerate(self.macros) if defn[0] == name), None)
 
     def _check_macro_definitions(self, definitions):
         """Ensures that every element of 'definitions' is a valid macro
@@ -195,16 +189,12 @@ class CCompiler:
         for defn in definitions:
             if not (
                 isinstance(defn, tuple)
-                and (
-                    len(defn) in (1, 2)
-                    and (isinstance(defn[1], str) or defn[1] is None)
-                )
+                and len(defn) in {1, 2}
+                and (isinstance(defn[1], str) or defn[1] is None)
                 and isinstance(defn[0], str)
             ):
                 raise TypeError(
-                    ("invalid macro definition '%s': " % defn)
-                    + "must be tuple (string,), (string, string), or "
-                    + "(string, None)"
+                    f"invalid macro definition '{defn}': must be tuple (string,), (string, string), or (string, None)"
                 )
 
     # -- Bookkeeping methods -------------------------------------------
@@ -477,11 +467,11 @@ class CCompiler:
         if self.force:
             return True
         else:
-            if self.dry_run:
-                newer = newer_group(objects, output_file, missing='newer')
-            else:
-                newer = newer_group(objects, output_file)
-            return newer
+            return (
+                newer_group(objects, output_file, missing='newer')
+                if self.dry_run
+                else newer_group(objects, output_file)
+            )
 
     def detect_language(self, sources):
         """Detect the language of a given file, or list of files. Uses
@@ -957,10 +947,10 @@ int main (int argc, char **argv) {
     def object_filenames(self, source_filenames, strip_dir=0, output_dir=''):
         if output_dir is None:
             output_dir = ''
-        return list(
+        return [
             self._make_out_path(output_dir, strip_dir, src_name)
             for src_name in source_filenames
-        )
+        ]
 
     @property
     def out_extensions(self):
@@ -972,9 +962,7 @@ int main (int argc, char **argv) {
         try:
             new_ext = self.out_extensions[ext]
         except LookupError:
-            raise UnknownFileError(
-                "unknown file type '{}' (from '{}')".format(ext, src_name)
-            )
+            raise UnknownFileError(f"unknown file type '{ext}' (from '{src_name}')")
         if strip_dir:
             base = os.path.basename(base)
         return os.path.join(output_dir, base + new_ext)
@@ -1010,8 +998,8 @@ int main (int argc, char **argv) {
         expected = '"static", "shared", "dylib", "xcode_stub"'
         if lib_type not in eval(expected):
             raise ValueError(f"'lib_type' must be {expected}")
-        fmt = getattr(self, lib_type + "_lib_format")
-        ext = getattr(self, lib_type + "_lib_extension")
+        fmt = getattr(self, f"{lib_type}_lib_format")
+        ext = getattr(self, f"{lib_type}_lib_extension")
 
         dir, base = os.path.split(libname)
         filename = fmt % (base, ext)
@@ -1076,14 +1064,17 @@ def get_default_compiler(osname=None, platform=None):
         osname = os.name
     if platform is None:
         platform = sys.platform
-    for pattern, compiler in _default_compilers:
-        if (
-            re.match(pattern, platform) is not None
-            or re.match(pattern, osname) is not None
-        ):
-            return compiler
-    # Default to Unix compiler
-    return 'unix'
+    return next(
+        (
+            compiler
+            for pattern, compiler in _default_compilers
+            if (
+                re.match(pattern, platform) is not None
+                or re.match(pattern, osname) is not None
+            )
+        ),
+        'unix',
+    )
 
 
 # Map compiler types to (module_name, class_name) pairs -- ie. where to
@@ -1115,9 +1106,10 @@ def show_compilers():
     # commands that use it.
     from distutils.fancy_getopt import FancyGetopt
 
-    compilers = []
-    for compiler in compiler_class.keys():
-        compilers.append(("compiler=" + compiler, None, compiler_class[compiler][2]))
+    compilers = [
+        (f"compiler={compiler}", None, compiler_class[compiler][2])
+        for compiler in compiler_class.keys()
+    ]
     compilers.sort()
     pretty_printer = FancyGetopt(compilers)
     pretty_printer.print_help("List of available compilers:")
@@ -1143,19 +1135,19 @@ def new_compiler(plat=None, compiler=None, verbose=0, dry_run=0, force=0):
 
         (module_name, class_name, long_description) = compiler_class[compiler]
     except KeyError:
-        msg = "don't know how to compile C/C++ code on platform '%s'" % plat
+        msg = f"don't know how to compile C/C++ code on platform '{plat}'"
         if compiler is not None:
-            msg = msg + " with '%s' compiler" % compiler
+            msg = f"{msg} with '{compiler}' compiler"
         raise DistutilsPlatformError(msg)
 
     try:
-        module_name = "distutils." + module_name
+        module_name = f"distutils.{module_name}"
         __import__(module_name)
         module = sys.modules[module_name]
         klass = vars(module)[class_name]
     except ImportError:
         raise DistutilsModuleError(
-            "can't compile C/C++ code: unable to load module '%s'" % module_name
+            f"can't compile C/C++ code: unable to load module '{module_name}'"
         )
     except KeyError:
         raise DistutilsModuleError(
@@ -1192,25 +1184,24 @@ def gen_preprocess_options(macros, include_dirs):
     # and therefore common to all CCompiler classes.
     pp_opts = []
     for macro in macros:
-        if not (isinstance(macro, tuple) and 1 <= len(macro) <= 2):
+        if not isinstance(macro, tuple) or not 1 <= len(macro) <= 2:
             raise TypeError(
                 "bad macro definition '%s': "
                 "each element of 'macros' list must be a 1- or 2-tuple" % macro
             )
 
         if len(macro) == 1:  # undefine this macro
-            pp_opts.append("-U%s" % macro[0])
+            pp_opts.append(f"-U{macro[0]}")
         elif len(macro) == 2:
             if macro[1] is None:  # define with no explicit value
-                pp_opts.append("-D%s" % macro[0])
+                pp_opts.append(f"-D{macro[0]}")
             else:
                 # XXX *don't* need to be clever about quoting the
                 # macro value here, because we're going to avoid the
                 # shell at all costs when we spawn the command!
                 pp_opts.append("-D%s=%s" % macro)
 
-    for dir in include_dirs:
-        pp_opts.append("-I%s" % dir)
+    pp_opts.extend(f"-I{dir}" for dir in include_dirs)
     return pp_opts
 
 
@@ -1221,11 +1212,7 @@ def gen_lib_options(compiler, library_dirs, runtime_library_dirs, libraries):
     directories.  Returns a list of command-line options suitable for use
     with some compiler (depending on the two format strings passed in).
     """
-    lib_opts = []
-
-    for dir in library_dirs:
-        lib_opts.append(compiler.library_dir_option(dir))
-
+    lib_opts = [compiler.library_dir_option(dir) for dir in library_dirs]
     for dir in runtime_library_dirs:
         opt = compiler.runtime_library_dir_option(dir)
         if isinstance(opt, list):
@@ -1242,13 +1229,10 @@ def gen_lib_options(compiler, library_dirs, runtime_library_dirs, libraries):
     for lib in libraries:
         (lib_dir, lib_name) = os.path.split(lib)
         if lib_dir:
-            lib_file = compiler.find_library_file([lib_dir], lib_name)
-            if lib_file:
+            if lib_file := compiler.find_library_file([lib_dir], lib_name):
                 lib_opts.append(lib_file)
             else:
-                compiler.warn(
-                    "no library file corresponding to " "'%s' found (skipping)" % lib
-                )
+                compiler.warn(f"no library file corresponding to '{lib}' found (skipping)")
         else:
             lib_opts.append(compiler.library_option(lib))
     return lib_opts

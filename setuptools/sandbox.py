@@ -369,9 +369,7 @@ class AbstractSandbox:
 
         def wrap(self, *args, **kw):
             retval = original(*args, **kw)
-            if self._active:
-                return self._remap_output(name, retval)
-            return retval
+            return self._remap_output(name, retval) if self._active else retval
 
         return wrap
 
@@ -393,16 +391,12 @@ class AbstractSandbox:
 
     def _remap_pair(self, operation, src, dst, *args, **kw):
         """Called for path pairs like rename, link, and symlink operations"""
-        return (
-            self._remap_input(operation + '-from', src, *args, **kw),
-            self._remap_input(operation + '-to', dst, *args, **kw),
-        )
+        return self._remap_input(
+            f'{operation}-from', src, *args, **kw
+        ), self._remap_input(f'{operation}-to', dst, *args, **kw)
 
 
-if hasattr(os, 'devnull'):
-    _EXCEPTIONS = [os.devnull]
-else:
-    _EXCEPTIONS = []
+_EXCEPTIONS = [os.devnull] if hasattr(os, 'devnull') else []
 
 
 class DirectorySandbox(AbstractSandbox):

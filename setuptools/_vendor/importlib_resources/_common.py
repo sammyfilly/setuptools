@@ -67,9 +67,7 @@ def get_resource_reader(package: types.ModuleType) -> Optional[ResourceReader]:
     # TypeError.  That seems terrible.
     spec = package.__spec__
     reader = getattr(spec.loader, 'get_resource_reader', None)  # type: ignore
-    if reader is None:
-        return None
-    return reader(spec.name)  # type: ignore
+    return None if reader is None else reader(spec.name)
 
 
 @functools.singledispatch
@@ -135,10 +133,8 @@ def _tempfile(
         del reader
         yield pathlib.Path(raw_path)
     finally:
-        try:
+        with contextlib.suppress(FileNotFoundError):
             _os_remove(raw_path)
-        except FileNotFoundError:
-            pass
 
 
 def _temp_file(path):

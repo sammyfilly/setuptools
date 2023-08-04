@@ -15,7 +15,7 @@ def newer(source, target):
     Raise DistutilsFileError if 'source' does not exist.
     """
     if not os.path.exists(source):
-        raise DistutilsFileError("file '%s' does not exist" % os.path.abspath(source))
+        raise DistutilsFileError(f"file '{os.path.abspath(source)}' does not exist")
     if not os.path.exists(target):
         return 1
 
@@ -79,11 +79,9 @@ def newer_group(sources, target, missing='error'):
     target_mtime = os.stat(target)[ST_MTIME]
     for source in sources:
         if not os.path.exists(source):
-            if missing == 'error':  # blow up when we stat() the file
-                pass
-            elif missing == 'ignore':  # missing source dropped from
+            if missing == 'ignore':
                 continue  # target's dependency list
-            elif missing == 'newer':  # missing source means target is
+            elif missing == 'newer':
                 return 1  # out-of-date
 
         source_mtime = os.stat(source)[ST_MTIME]

@@ -113,7 +113,7 @@ class bdist_egg(Command):
                 platform=self.distribution.has_ext_modules() and self.plat_name,
             )
 
-            self.egg_output = os.path.join(self.dist_dir, basename + '.egg')
+            self.egg_output = os.path.join(self.dist_dir, f'{basename}.egg')
 
     def do_install_data(self):
         # Hack for packages that install data to install's --install-lib
@@ -172,7 +172,7 @@ class bdist_egg(Command):
         to_compile = []
         for p, ext_name in enumerate(ext_outputs):
             filename, ext = os.path.splitext(ext_name)
-            pyfile = os.path.join(self.bdist_dir, strip_module(filename) + '.py')
+            pyfile = os.path.join(self.bdist_dir, f'{strip_module(filename)}.py')
             self.stubs.append(pyfile)
             log.info("creating stub loader for %s", ext_name)
             if not self.dry_run:
@@ -200,10 +200,9 @@ class bdist_egg(Command):
             log.info("writing %s", native_libs)
             if not self.dry_run:
                 ensure_directory(native_libs)
-                libs_file = open(native_libs, 'wt')
-                libs_file.write('\n'.join(all_outputs))
-                libs_file.write('\n')
-                libs_file.close()
+                with open(native_libs, 'wt') as libs_file:
+                    libs_file.write('\n'.join(all_outputs))
+                    libs_file.write('\n')
         elif os.path.isfile(native_libs):
             log.info("removing %s", native_libs)
             if not self.dry_run:
@@ -251,8 +250,8 @@ class bdist_egg(Command):
 
                     pattern = r'(?P<name>.+)\.(?P<magic>[^.]+)\.pyc'
                     m = re.match(pattern, name)
-                    path_new = os.path.join(base, os.pardir, m.group('name') + '.pyc')
-                    log.info("Renaming file from [%s] to [%s]" % (path_old, path_new))
+                    path_new = os.path.join(base, os.pardir, m['name'] + '.pyc')
+                    log.info(f"Renaming file from [{path_old}] to [{path_new}]")
                     try:
                         os.remove(path_new)
                     except OSError:
@@ -289,9 +288,11 @@ class bdist_egg(Command):
 
         paths = {self.bdist_dir: ''}
         for base, dirs, files in sorted_walk(self.bdist_dir):
-            for filename in files:
-                if os.path.splitext(filename)[1].lower() in NATIVE_EXTENSIONS:
-                    all_outputs.append(paths[base] + filename)
+            all_outputs.extend(
+                paths[base] + filename
+                for filename in files
+                if os.path.splitext(filename)[1].lower() in NATIVE_EXTENSIONS
+            )
             for filename in dirs:
                 paths[os.path.join(base, filename)] = paths[base] + filename + '/'
 
@@ -319,8 +320,7 @@ def walk_egg(egg_dir):
     if 'EGG-INFO' in dirs:
         dirs.remove('EGG-INFO')
     yield base, dirs, files
-    for bdf in walker:
-        yield bdf
+    yield from walker
 
 
 def analyze_egg(egg_dir, stubs):
@@ -349,9 +349,8 @@ def write_safety_flag(egg_dir, safe):
             if safe is None or bool(safe) != flag:
                 os.unlink(fn)
         elif safe is not None and bool(safe) == flag:
-            f = open(fn, 'wt')
-            f.write('\n')
-            f.close()
+            with open(fn, 'wt') as f:
+                f.write('\n')
 
 
 safety_flags = {
@@ -368,14 +367,10 @@ def scan_module(egg_dir, base, name, stubs):
         return True  # Extension module
     pkg = base[len(egg_dir) + 1 :].replace(os.sep, '.')
     module = pkg + (pkg and '.' or '') + os.path.splitext(name)[0]
-    if sys.version_info < (3, 7):
-        skip = 12  # skip magic & date & file size
-    else:
-        skip = 16  # skip magic & reserved? & date & file size
-    f = open(filename, 'rb')
-    f.read(skip)
-    code = marshal.load(f)
-    f.close()
+    skip = 12 if sys.version_info < (3, 7) else 16
+    with open(filename, 'rb') as f:
+        f.read(skip)
+        code = marshal.load(f)
     safe = True
     symbols = dict.fromkeys(iter_symbols(code))
     for bad in ['__file__', '__path__']:
@@ -404,14 +399,12 @@ def scan_module(egg_dir, base, name, stubs):
 
 def iter_symbols(code):
     """Yield names and strings used by `code` and its nested code objects"""
-    for name in code.co_names:
-        yield name
+    yield from code.co_names
     for const in code.co_consts:
         if isinstance(const, str):
             yield const
         elif isinstance(const, CodeType):
-            for name in iter_symbols(const):
-                yield name
+            yield from iter_symbols(const)
 
 
 def can_scan():

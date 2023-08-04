@@ -112,12 +112,11 @@ def fixup_build_ext(cmd):
         runshared = sysconfig.get_config_var('RUNSHARED')
         if runshared is None:
             cmd.library_dirs = ['.']
+        elif sys.platform == 'darwin':
+            cmd.library_dirs = []
         else:
-            if sys.platform == 'darwin':
-                cmd.library_dirs = []
-            else:
-                name, equals, value = runshared.partition('=')
-                cmd.library_dirs = [d for d in value.split(os.pathsep) if d]
+            name, equals, value = runshared.partition('=')
+            cmd.library_dirs = [d for d in value.split(os.pathsep) if d]
 
 
 def combine_markers(cls):

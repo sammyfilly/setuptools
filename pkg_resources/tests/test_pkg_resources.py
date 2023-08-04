@@ -120,9 +120,8 @@ class TestZipProvider:
         filename = zp.get_resource_filename(manager, 'data.dat')
         actual = datetime.datetime.fromtimestamp(os.stat(filename).st_mtime)
         assert actual == self.ref_time
-        f = open(filename, 'w')
-        f.write('hello, world?')
-        f.close()
+        with open(filename, 'w') as f:
+            f.write('hello, world?')
         ts = timestamp(self.ref_time)
         os.utime(filename, (ts, ts))
         filename = zp.get_resource_filename(manager, 'data.dat')
@@ -136,7 +135,7 @@ class TestResourceManager:
         mgr = pkg_resources.ResourceManager()
         path = mgr.get_cache_path('foo')
         type_ = str(type(path))
-        message = "Unexpected type from get_cache_path: " + type_
+        message = f"Unexpected type from get_cache_path: {type_}"
         assert isinstance(path, str), message
 
     def test_get_cache_path_race(self, tmpdir):
@@ -227,8 +226,8 @@ def test_get_metadata__bad_utf8(tmpdir):
         "codec can't decode byte 0xe9 in position 1: "
         'invalid continuation byte in METADATA file at path: '
     )
-    assert expected in actual, 'actual: {}'.format(actual)
-    assert actual.endswith(metadata_path), 'actual: {}'.format(actual)
+    assert expected in actual, f'actual: {actual}'
+    assert actual.endswith(metadata_path), f'actual: {actual}'
 
 
 def make_distribution_no_version(tmpdir, basename):
@@ -268,11 +267,11 @@ def test_distribution_version_missing(
     """
     Test Distribution.version when the "Version" header is missing.
     """
-    basename = 'foo.{}'.format(suffix)
+    basename = f'foo.{suffix}'
     dist, dist_dir = make_distribution_no_version(tmpdir, basename)
 
-    expected_text = ("Missing 'Version:' header and/or {} file at path: ").format(
-        expected_filename
+    expected_text = (
+        f"Missing 'Version:' header and/or {expected_filename} file at path: "
     )
     metadata_path = os.path.join(dist_dir, expected_filename)
 
@@ -337,7 +336,7 @@ class TestDeepVersionLookupDistutils:
         env = Environment(tmpdir)
         tmpdir.chmod(stat.S_IRWXU)
         subs = 'home', 'lib', 'scripts', 'data', 'egg-base'
-        env.paths = dict((dirname, str(tmpdir / dirname)) for dirname in subs)
+        env.paths = {dirname: str(tmpdir / dirname) for dirname in subs}
         list(map(os.mkdir, env.paths.values()))
         return env
 

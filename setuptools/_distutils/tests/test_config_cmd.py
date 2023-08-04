@@ -24,7 +24,7 @@ class TestConfig(support.TempdirManager):
             self._logs.append(line)
 
     def test_dump_file(self):
-        this_file = os.path.splitext(__file__)[0] + '.py'
+        this_file = f'{os.path.splitext(__file__)[0]}.py'
         f = open(this_file)
         try:
             numlines = len(f.readlines())
@@ -60,9 +60,9 @@ class TestConfig(support.TempdirManager):
         # on options
         pkg_dir, dist = self.create_dist()
         cmd = config(dist)
-        cmd.include_dirs = 'one%stwo' % os.pathsep
+        cmd.include_dirs = f'one{os.pathsep}two'
         cmd.libraries = 'one'
-        cmd.library_dirs = 'three%sfour' % os.pathsep
+        cmd.library_dirs = f'three{os.pathsep}four'
         cmd.ensure_finalized()
 
         assert cmd.include_dirs == ['one', 'two']

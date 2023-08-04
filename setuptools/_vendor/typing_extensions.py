@@ -133,7 +133,7 @@ elif sys.version_info[:2] >= (3, 7):
     class _FinalForm(typing._SpecialForm, _root=True):
 
         def __repr__(self):
-            return 'typing_extensions.' + self._name
+            return f'typing_extensions.{self._name}'
 
         def __getitem__(self, parameters):
             item = typing._type_check(parameters,
@@ -187,9 +187,7 @@ else:
 
         def _eval_type(self, globalns, localns):
             new_tp = typing._eval_type(self.__type__, globalns, localns)
-            if new_tp == self.__type__:
-                return self
-            return type(self)(new_tp, _root=True)
+            return self if new_tp == self.__type__ else type(self)(new_tp, _root=True)
 
         def __repr__(self):
             r = super().__repr__()
@@ -250,7 +248,7 @@ elif sys.version_info[:2] >= (3, 7):
     class _LiteralForm(typing._SpecialForm, _root=True):
 
         def __repr__(self):
-            return 'typing_extensions.' + self._name
+            return f'typing_extensions.{self._name}'
 
         def __getitem__(self, parameters):
             return typing._GenericAlias(self, parameters)
@@ -1070,7 +1068,7 @@ else:
             optional_keys = set()
 
             for base in bases:
-                annotations.update(base.__dict__.get('__annotations__', {}))
+                annotations |= base.__dict__.get('__annotations__', {})
                 required_keys.update(base.__dict__.get('__required_keys__', ()))
                 optional_keys.update(base.__dict__.get('__optional_keys__', ()))
 
@@ -1289,7 +1287,7 @@ else:
 
         def __new__(cls, name, bases, namespace, **kwargs):
             if any(b is not object for b in bases):
-                raise TypeError("Cannot subclass " + str(Annotated))
+                raise TypeError(f"Cannot subclass {str(Annotated)}")
             return super().__new__(cls, name, bases, namespace, **kwargs)
 
         @property
@@ -1324,10 +1322,7 @@ else:
             tree = self._subs_tree()
             while isinstance(tree, tuple) and tree[0] is Annotated:
                 tree = tree[1]
-            if isinstance(tree, tuple):
-                return tree[0]
-            else:
-                return tree
+            return tree[0] if isinstance(tree, tuple) else tree
 
         @typing._tp_cache
         def __getitem__(self, params):
@@ -1453,9 +1448,7 @@ elif PEP_560:
         if isinstance(tp, (typing._GenericAlias, GenericAlias, _BaseGenericAlias,
                            ParamSpecArgs, ParamSpecKwargs)):
             return tp.__origin__
-        if tp is typing.Generic:
-            return typing.Generic
-        return None
+        return typing.Generic if tp is typing.Generic else None
 
     def get_args(tp):
         """Get type arguments with all substitutions performed.
@@ -1487,7 +1480,7 @@ if hasattr(typing, 'TypeAlias'):
 elif sys.version_info[:2] >= (3, 9):
     class _TypeAliasForm(typing._SpecialForm, _root=True):
         def __repr__(self):
-            return 'typing_extensions.' + self._name
+            return f'typing_extensions.{self._name}'
 
     @_TypeAliasForm
     def TypeAlias(self, parameters):
@@ -1506,7 +1499,7 @@ elif sys.version_info[:2] >= (3, 9):
 elif sys.version_info[:2] >= (3, 7):
     class _TypeAliasForm(typing._SpecialForm, _root=True):
         def __repr__(self):
-            return 'typing_extensions.' + self._name
+            return f'typing_extensions.{self._name}'
 
     TypeAlias = _TypeAliasForm('TypeAlias',
                                doc="""Special marker indicating that an assignment should
@@ -1800,7 +1793,7 @@ elif sys.version_info[:2] >= (3, 9):
 elif sys.version_info[:2] >= (3, 7):
     class _ConcatenateForm(typing._SpecialForm, _root=True):
         def __repr__(self):
-            return 'typing_extensions.' + self._name
+            return f'typing_extensions.{self._name}'
 
         def __getitem__(self, parameters):
             return _concatenate_getitem(self, parameters)
@@ -1861,7 +1854,7 @@ if hasattr(typing, 'TypeGuard'):
 elif sys.version_info[:2] >= (3, 9):
     class _TypeGuardForm(typing._SpecialForm, _root=True):
         def __repr__(self):
-            return 'typing_extensions.' + self._name
+            return f'typing_extensions.{self._name}'
 
     @_TypeGuardForm
     def TypeGuard(self, parameters):
@@ -1914,7 +1907,7 @@ elif sys.version_info[:2] >= (3, 7):
     class _TypeGuardForm(typing._SpecialForm, _root=True):
 
         def __repr__(self):
-            return 'typing_extensions.' + self._name
+            return f'typing_extensions.{self._name}'
 
         def __getitem__(self, parameters):
             item = typing._type_check(parameters,
@@ -2026,9 +2019,7 @@ else:
 
         def _eval_type(self, globalns, localns):
             new_tp = typing._eval_type(self.__type__, globalns, localns)
-            if new_tp == self.__type__:
-                return self
-            return type(self)(new_tp, _root=True)
+            return self if new_tp == self.__type__ else type(self)(new_tp, _root=True)
 
         def __repr__(self):
             r = super().__repr__()
@@ -2142,7 +2133,7 @@ if hasattr(typing, 'Required'):
 elif sys.version_info[:2] >= (3, 9):
     class _ExtensionsSpecialForm(typing._SpecialForm, _root=True):
         def __repr__(self):
-            return 'typing_extensions.' + self._name
+            return f'typing_extensions.{self._name}'
 
     @_ExtensionsSpecialForm
     def Required(self, parameters):
@@ -2184,11 +2175,10 @@ elif sys.version_info[:2] >= (3, 9):
 elif sys.version_info[:2] >= (3, 7):
     class _RequiredForm(typing._SpecialForm, _root=True):
         def __repr__(self):
-            return 'typing_extensions.' + self._name
+            return f'typing_extensions.{self._name}'
 
         def __getitem__(self, parameters):
-            item = typing._type_check(parameters,
-                                      '{} accepts only single type'.format(self._name))
+            item = typing._type_check(parameters, f'{self._name} accepts only single type')
             return typing._GenericAlias(self, (item,))
 
     Required = _RequiredForm(
@@ -2233,22 +2223,22 @@ else:
         def __getitem__(self, item):
             cls = type(self)
             if self.__type__ is None:
-                return cls(typing._type_check(item,
-                           '{} accepts only single type.'.format(cls.__name__[1:])),
-                           _root=True)
-            raise TypeError('{} cannot be further subscripted'
-                            .format(cls.__name__[1:]))
+                return cls(
+                    typing._type_check(
+                        item, f'{cls.__name__[1:]} accepts only single type.'
+                    ),
+                    _root=True,
+                )
+            raise TypeError(f'{cls.__name__[1:]} cannot be further subscripted')
 
         def _eval_type(self, globalns, localns):
             new_tp = typing._eval_type(self.__type__, globalns, localns)
-            if new_tp == self.__type__:
-                return self
-            return type(self)(new_tp, _root=True)
+            return self if new_tp == self.__type__ else type(self)(new_tp, _root=True)
 
         def __repr__(self):
             r = super().__repr__()
             if self.__type__ is not None:
-                r += '[{}]'.format(typing._type_repr(self.__type__))
+                r += f'[{typing._type_repr(self.__type__)}]'
             return r
 
         def __hash__(self):

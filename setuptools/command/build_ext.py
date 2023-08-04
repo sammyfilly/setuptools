@@ -71,9 +71,7 @@ def if_dl(s):
 def get_abi3_suffix():
     """Return the file extension for an abi3-compliant Extension()"""
     for suffix in EXTENSION_SUFFIXES:
-        if '.abi3' in suffix:  # Unix
-            return suffix
-        elif suffix == '.pyd':  # Windows
+        if '.abi3' in suffix or suffix == '.pyd':  # Unix
             return suffix
 
 
@@ -156,8 +154,7 @@ class build_ext(_build_ext):
 
         if fullname in self.ext_map:
             ext = self.ext_map[fullname]
-            use_abi3 = getattr(ext, 'py_limited_api') and get_abi3_suffix()
-            if use_abi3:
+            if use_abi3 := getattr(ext, 'py_limited_api') and get_abi3_suffix():
                 filename = filename[: -len(so_ext)]
                 so_ext = get_abi3_suffix()
                 filename = filename + so_ext
@@ -166,7 +163,7 @@ class build_ext(_build_ext):
                 return self.shlib_compiler.library_filename(fn, libtype)
             elif use_stubs and ext._links_to_dynamic:
                 d, fn = os.path.split(filename)
-                return os.path.join(d, 'dl-' + fn)
+                return os.path.join(d, f'dl-{fn}')
         return filename
 
     def initialize_options(self):
@@ -280,7 +277,7 @@ class build_ext(_build_ext):
         )
         # pair each base with the extension
         pairs = itertools.product(ns_ext_bases, self.__get_output_extensions())
-        return list(base + fnext for base, fnext in pairs)
+        return [base + fnext for base, fnext in pairs]
 
     def __get_output_extensions(self):
         yield '.py'
@@ -295,39 +292,38 @@ class build_ext(_build_ext):
     def _write_stub_file(self, stub_file: str, ext: Extension, compile=False):
         log.info("writing stub loader for %s to %s", ext._full_name, stub_file)
         if compile and os.path.exists(stub_file):
-            raise BaseError(stub_file + " already exists! Please delete.")
+            raise BaseError(f"{stub_file} already exists! Please delete.")
         if not self.dry_run:
-            f = open(stub_file, 'w')
-            f.write(
-                '\n'.join(
-                    [
-                        "def __bootstrap__():",
-                        "   global __bootstrap__, __file__, __loader__",
-                        "   import sys, os, pkg_resources, importlib.util"
-                        + if_dl(", dl"),
-                        "   __file__ = pkg_resources.resource_filename"
-                        "(__name__,%r)" % os.path.basename(ext._file_name),
-                        "   del __bootstrap__",
-                        "   if '__loader__' in globals():",
-                        "       del __loader__",
-                        if_dl("   old_flags = sys.getdlopenflags()"),
-                        "   old_dir = os.getcwd()",
-                        "   try:",
-                        "     os.chdir(os.path.dirname(__file__))",
-                        if_dl("     sys.setdlopenflags(dl.RTLD_NOW)"),
-                        "     spec = importlib.util.spec_from_file_location(",
-                        "                __name__, __file__)",
-                        "     mod = importlib.util.module_from_spec(spec)",
-                        "     spec.loader.exec_module(mod)",
-                        "   finally:",
-                        if_dl("     sys.setdlopenflags(old_flags)"),
-                        "     os.chdir(old_dir)",
-                        "__bootstrap__()",
-                        "",  # terminal \n
-                    ]
+            with open(stub_file, 'w') as f:
+                f.write(
+                    '\n'.join(
+                        [
+                            "def __bootstrap__():",
+                            "   global __bootstrap__, __file__, __loader__",
+                            "   import sys, os, pkg_resources, importlib.util"
+                            + if_dl(", dl"),
+                            "   __file__ = pkg_resources.resource_filename"
+                            "(__name__,%r)" % os.path.basename(ext._file_name),
+                            "   del __bootstrap__",
+                            "   if '__loader__' in globals():",
+                            "       del __loader__",
+                            if_dl("   old_flags = sys.getdlopenflags()"),
+                            "   old_dir = os.getcwd()",
+                            "   try:",
+                            "     os.chdir(os.path.dirname(__file__))",
+                            if_dl("     sys.setdlopenflags(dl.RTLD_NOW)"),
+                            "     spec = importlib.util.spec_from_file_location(",
+                            "                __name__, __file__)",
+                            "     mod = importlib.util.module_from_spec(spec)",
+                            "     spec.loader.exec_module(mod)",
+                            "   finally:",
+                            if_dl("     sys.setdlopenflags(old_flags)"),
+                            "     os.chdir(old_dir)",
+                            "__bootstrap__()",
+                            "",  # terminal \n
+                        ]
+                    )
                 )
-            )
-            f.close()
         if compile:
             self._compile_and_remove_stub(stub_file)
 

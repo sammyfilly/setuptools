@@ -274,7 +274,7 @@ class UnixCCompiler(CCompiler):
     # ccompiler.py.
 
     def library_dir_option(self, dir):
-        return "-L" + dir
+        return f"-L{dir}"
 
     def _is_gcc(self):
         cc_var = sysconfig.get_config_var("CC")
@@ -300,16 +300,13 @@ class UnixCCompiler(CCompiler):
 
             macosx_target_ver = get_macosx_target_ver()
             if macosx_target_ver and split_version(macosx_target_ver) >= [10, 5]:
-                return "-Wl,-rpath," + dir
+                return f"-Wl,-rpath,{dir}"
             else:  # no support for -rpath on earlier macOS versions
-                return "-L" + dir
+                return f"-L{dir}"
         elif sys.platform[:7] == "freebsd":
-            return "-Wl,-rpath=" + dir
+            return f"-Wl,-rpath={dir}"
         elif sys.platform[:5] == "hp-ux":
-            return [
-                "-Wl,+s" if self._is_gcc() else "+s",
-                "-L" + dir,
-            ]
+            return ["-Wl,+s" if self._is_gcc() else "+s", f"-L{dir}"]
 
         # For all compilers, `-Wl` is the presumed way to
         # pass a compiler option to the linker and `-R` is
@@ -317,12 +314,12 @@ class UnixCCompiler(CCompiler):
         if sysconfig.get_config_var("GNULD") == "yes":
             # GNU ld needs an extra option to get a RUNPATH
             # instead of just an RPATH.
-            return "-Wl,--enable-new-dtags,-R" + dir
+            return f"-Wl,--enable-new-dtags,-R{dir}"
         else:
-            return "-Wl,-R" + dir
+            return f"-Wl,-R{dir}"
 
     def library_option(self, lib):
-        return "-l" + lib
+        return f"-l{lib}"
 
     @staticmethod
     def _library_root(dir):
@@ -357,7 +354,7 @@ class UnixCCompiler(CCompiler):
             )
         )
 
-        return os.path.join(match.group(1), dir[1:]) if apply_root else dir
+        return os.path.join(match[1], dir[1:]) if apply_root else dir
 
     def find_library_file(self, dirs, lib, debug=0):
         r"""

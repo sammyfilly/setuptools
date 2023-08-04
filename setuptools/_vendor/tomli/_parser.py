@@ -592,23 +592,23 @@ def parse_value(  # noqa: C901
     # IMPORTANT: order conditions based on speed of checking and likelihood
 
     # Basic strings
-    if char == '"':
-        if src.startswith('"""', pos):
-            return parse_multiline_str(src, pos, literal=False)
-        return parse_one_line_basic_str(src, pos)
-
-    # Literal strings
     if char == "'":
-        if src.startswith("'''", pos):
-            return parse_multiline_str(src, pos, literal=True)
-        return parse_literal_str(src, pos)
-
-    # Booleans
-    if char == "t":
+        return (
+            parse_multiline_str(src, pos, literal=True)
+            if src.startswith("'''", pos)
+            else parse_literal_str(src, pos)
+        )
+    elif char == "t":
         if src.startswith("true", pos):
             return pos + 4, True
-    if char == "f":
-        if src.startswith("false", pos):
+    elif char == '"':
+        return (
+            parse_multiline_str(src, pos, literal=False)
+            if src.startswith('"""', pos)
+            else parse_one_line_basic_str(src, pos)
+        )
+    if src.startswith("false", pos):
+        if char == "f":
             return pos + 5, False
 
     # Arrays
@@ -619,23 +619,16 @@ def parse_value(  # noqa: C901
     if char == "{":
         return parse_inline_table(src, pos, parse_float)
 
-    # Dates and times
-    datetime_match = RE_DATETIME.match(src, pos)
-    if datetime_match:
+    if datetime_match := RE_DATETIME.match(src, pos):
         try:
             datetime_obj = match_to_datetime(datetime_match)
         except ValueError as e:
             raise suffixed_err(src, pos, "Invalid date or datetime") from e
         return datetime_match.end(), datetime_obj
-    localtime_match = RE_LOCALTIME.match(src, pos)
-    if localtime_match:
+    if localtime_match := RE_LOCALTIME.match(src, pos):
         return localtime_match.end(), match_to_localtime(localtime_match)
 
-    # Integers and "normal" floats.
-    # The regex will greedily match any type starting with a decimal
-    # char, so needs to be located after handling of dates and times.
-    number_match = RE_NUMBER.match(src, pos)
-    if number_match:
+    if number_match := RE_NUMBER.match(src, pos):
         return number_match.end(), match_to_number(number_match, parse_float)
 
     # Special floats
@@ -657,10 +650,7 @@ def suffixed_err(src: str, pos: Pos, msg: str) -> TOMLDecodeError:
         if pos >= len(src):
             return "end of document"
         line = src.count("\n", 0, pos) + 1
-        if line == 1:
-            column = pos + 1
-        else:
-            column = pos - src.rindex("\n", 0, pos)
+        column = pos + 1 if line == 1 else pos - src.rindex("\n", 0, pos)
         return f"line {line}, column {column}"
 
     return TOMLDecodeError(f"{msg} (at {coord_repr(src, pos)})")

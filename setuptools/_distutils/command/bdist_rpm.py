@@ -203,10 +203,7 @@ class bdist_rpm(Command):
             self.rpm_base = os.path.join(self.bdist_base, "rpm")
 
         if self.python is None:
-            if self.fix_python:
-                self.python = sys.executable
-            else:
-                self.python = "python3"
+            self.python = sys.executable if self.fix_python else "python3"
         elif self.fix_python:
             raise DistutilsOptionError(
                 "--python and --fix-python are mutually exclusive options"
@@ -214,7 +211,7 @@ class bdist_rpm(Command):
 
         if os.name != 'posix':
             raise DistutilsPlatformError(
-                "don't know how to create RPM " "distributions on platform %s" % os.name
+                f"don't know how to create RPM distributions on platform {os.name}"
             )
         if self.binary_only and self.source_only:
             raise DistutilsOptionError(
@@ -232,8 +229,7 @@ class bdist_rpm(Command):
         self.ensure_string('group', "Development/Libraries")
         self.ensure_string(
             'vendor',
-            "%s <%s>"
-            % (self.distribution.get_contact(), self.distribution.get_contact_email()),
+            f"{self.distribution.get_contact()} <{self.distribution.get_contact_email()}>",
         )
         self.ensure_string('packager')
         self.ensure_string_list('doc_files')
@@ -296,9 +292,11 @@ class bdist_rpm(Command):
 
         # Spec file goes into 'dist_dir' if '--spec-only specified',
         # build/rpm.<plat> otherwise.
-        spec_path = os.path.join(spec_dir, "%s.spec" % self.distribution.get_name())
+        spec_path = os.path.join(spec_dir, f"{self.distribution.get_name()}.spec")
         self.execute(
-            write_file, (spec_path, self._make_spec_file()), "writing '%s'" % spec_path
+            write_file,
+            (spec_path, self._make_spec_file()),
+            f"writing '{spec_path}'",
         )
 
         if self.spec_only:  # stop if requested
@@ -308,10 +306,7 @@ class bdist_rpm(Command):
         # optional icon.
         saved_dist_files = self.distribution.dist_files[:]
         sdist = self.reinitialize_command('sdist')
-        if self.use_bzip2:
-            sdist.formats = ['bztar']
-        else:
-            sdist.formats = ['gztar']
+        sdist.formats = ['bztar'] if self.use_bzip2 else ['gztar']
         self.run_command('sdist')
         self.distribution.dist_files = saved_dist_files
 
@@ -323,7 +318,7 @@ class bdist_rpm(Command):
             if os.path.exists(self.icon):
                 self.copy_file(self.icon, source_dir)
             else:
-                raise DistutilsFileError("icon file '%s' does not exist" % self.icon)
+                raise DistutilsFileError(f"icon file '{self.icon}' does not exist")
 
         # build package
         log.info("building RPMs")
@@ -335,9 +330,9 @@ class bdist_rpm(Command):
             rpm_cmd.append('-bb')
         else:
             rpm_cmd.append('-ba')
-        rpm_cmd.extend(['--define', '__python %s' % self.python])
+        rpm_cmd.extend(['--define', f'__python {self.python}'])
         if self.rpm3_mode:
-            rpm_cmd.extend(['--define', '_topdir %s' % os.path.abspath(self.rpm_base)])
+            rpm_cmd.extend(['--define', f'_topdir {os.path.abspath(self.rpm_base)}'])
         if not self.keep_temp:
             rpm_cmd.append('--clean')
 
@@ -350,13 +345,9 @@ class bdist_rpm(Command):
         # Note that some of these may not be really built (if the file
         # list is empty)
         nvr_string = "%{name}-%{version}-%{release}"
-        src_rpm = nvr_string + ".src.rpm"
+        src_rpm = f"{nvr_string}.src.rpm"
         non_src_rpm = "%{arch}/" + nvr_string + ".%{arch}.rpm"
-        q_cmd = r"rpm -q --qf '{} {}\n' --specfile '{}'".format(
-            src_rpm,
-            non_src_rpm,
-            spec_path,
-        )
+        q_cmd = f"rpm -q --qf '{src_rpm} {non_src_rpm}\n' --specfile '{spec_path}'"
 
         out = os.popen(q_cmd)
         try:
@@ -373,9 +364,8 @@ class bdist_rpm(Command):
                 if source_rpm is None:
                     source_rpm = ell[0]
 
-            status = out.close()
-            if status:
-                raise DistutilsExecError("Failed to execute: %s" % repr(q_cmd))
+            if status := out.close():
+                raise DistutilsExecError(f"Failed to execute: {repr(q_cmd)}")
 
         finally:
             out.close()

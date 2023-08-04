@@ -175,8 +175,7 @@ class RangeMap(dict):
 
     def _find_first_match_(self, keys, item):
         is_match = functools.partial(self.match, item)
-        matches = list(filter(is_match, keys))
-        if matches:
+        if matches := list(filter(is_match, keys)):
             return matches[0]
         raise KeyError(item)
 

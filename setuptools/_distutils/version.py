@@ -60,37 +60,27 @@ class Version:
         )
 
     def __repr__(self):
-        return "{} ('{}')".format(self.__class__.__name__, str(self))
+        return f"{self.__class__.__name__} ('{str(self)}')"
 
     def __eq__(self, other):
         c = self._cmp(other)
-        if c is NotImplemented:
-            return c
-        return c == 0
+        return c if c is NotImplemented else c == 0
 
     def __lt__(self, other):
         c = self._cmp(other)
-        if c is NotImplemented:
-            return c
-        return c < 0
+        return c if c is NotImplemented else c < 0
 
     def __le__(self, other):
         c = self._cmp(other)
-        if c is NotImplemented:
-            return c
-        return c <= 0
+        return c if c is NotImplemented else c <= 0
 
     def __gt__(self, other):
         c = self._cmp(other)
-        if c is NotImplemented:
-            return c
-        return c > 0
+        return c if c is NotImplemented else c > 0
 
     def __ge__(self, other):
         c = self._cmp(other)
-        if c is NotImplemented:
-            return c
-        return c >= 0
+        return c if c is NotImplemented else c >= 0
 
 
 # Interface for version-number classes -- must be implemented
@@ -154,7 +144,7 @@ class StrictVersion(Version):
     def parse(self, vstring):
         match = self.version_re.match(vstring)
         if not match:
-            raise ValueError("invalid version number '%s'" % vstring)
+            raise ValueError(f"invalid version number '{vstring}'")
 
         (major, minor, patch, prerelease, prerelease_num) = match.group(1, 2, 4, 5, 6)
 
@@ -163,14 +153,11 @@ class StrictVersion(Version):
         else:
             self.version = tuple(map(int, [major, minor])) + (0,)
 
-        if prerelease:
-            self.prerelease = (prerelease[0], int(prerelease_num))
-        else:
-            self.prerelease = None
+        self.prerelease = (prerelease[0], int(prerelease_num)) if prerelease else None
 
     def __str__(self):
         if self.version[2] == 0:
-            vstring = '.'.join(map(str, self.version[0:2]))
+            vstring = '.'.join(map(str, self.version[:2]))
         else:
             vstring = '.'.join(map(str, self.version))
 
@@ -189,11 +176,7 @@ class StrictVersion(Version):
         if self.version != other.version:
             # numeric versions don't match
             # prerelease stuff doesn't matter
-            if self.version < other.version:
-                return -1
-            else:
-                return 1
-
+            return -1 if self.version < other.version else 1
         # have to compare prerelease
         # case 1: neither has prerelease; they're equal
         # case 2: self has prerelease, other doesn't; other is greater
@@ -204,17 +187,15 @@ class StrictVersion(Version):
             return 0
         elif self.prerelease and not other.prerelease:
             return -1
-        elif not self.prerelease and other.prerelease:
+        elif not self.prerelease:
             return 1
-        elif self.prerelease and other.prerelease:
+        else:
             if self.prerelease == other.prerelease:
                 return 0
             elif self.prerelease < other.prerelease:
                 return -1
             else:
                 return 1
-        else:
-            assert False, "never get here"
 
 
 # end class StrictVersion
@@ -327,18 +308,15 @@ class LooseVersion(Version):
         self.vstring = vstring
         components = [x for x in self.component_re.split(vstring) if x and x != '.']
         for i, obj in enumerate(components):
-            try:
+            with contextlib.suppress(ValueError):
                 components[i] = int(obj)
-            except ValueError:
-                pass
-
         self.version = components
 
     def __str__(self):
         return self.vstring
 
     def __repr__(self):
-        return "LooseVersion ('%s')" % str(self)
+        return f"LooseVersion ('{str(self)}')"
 
     def _cmp(self, other):
         if isinstance(other, str):

@@ -74,10 +74,10 @@ class upload(PyPIRCCommand):
         # Makes sure the repository URL is compliant
         schema, netloc, url, params, query, fragments = urlparse(self.repository)
         if params or query or fragments:
-            raise AssertionError("Incompatible url %s" % self.repository)
+            raise AssertionError(f"Incompatible url {self.repository}")
 
         if schema not in ('http', 'https'):
-            raise AssertionError("unsupported schema " + schema)
+            raise AssertionError(f"unsupported schema {schema}")
 
         # Sign if requested
         if self.sign:
@@ -96,17 +96,13 @@ class upload(PyPIRCCommand):
 
         meta = self.distribution.metadata
         data = {
-            # action
             ':action': 'file_upload',
             'protocol_version': '1',
-            # identify release
             'name': meta.get_name(),
             'version': meta.get_version(),
-            # file content
             'content': (os.path.basename(filename), content),
             'filetype': command,
             'pyversion': pyversion,
-            # additional meta-data
             'metadata_version': '1.0',
             'summary': meta.get_description(),
             'home_page': meta.get_url(),
@@ -118,13 +114,11 @@ class upload(PyPIRCCommand):
             'platform': meta.get_platforms(),
             'classifiers': meta.get_classifiers(),
             'download_url': meta.get_download_url(),
-            # PEP 314
             'provides': meta.get_provides(),
             'requires': meta.get_requires(),
             'obsoletes': meta.get_obsoletes(),
+            'comment': '',
         }
-
-        data['comment'] = ''
 
         # file content digests
         for digest_name, digest_cons in _FILE_CONTENT_DIGESTS.items():
@@ -137,11 +131,11 @@ class upload(PyPIRCCommand):
                 pass
 
         if self.sign:
-            with open(filename + ".asc", "rb") as f:
-                data['gpg_signature'] = (os.path.basename(filename) + ".asc", f.read())
+            with open(f"{filename}.asc", "rb") as f:
+                data['gpg_signature'] = f"{os.path.basename(filename)}.asc", f.read()
 
         # set up the authentication
-        user_pass = (self.username + ":" + self.password).encode('ascii')
+        user_pass = f"{self.username}:{self.password}".encode('ascii')
         # The exact encoding of the authentication string is debated.
         # Anyway PyPI only accepts ascii for both username or password.
         auth = "Basic " + standard_b64encode(user_pass).decode('ascii')
@@ -158,7 +152,7 @@ class upload(PyPIRCCommand):
                 value = [value]
             for value in value:
                 if type(value) is tuple:
-                    title += '; filename="%s"' % value[0]
+                    title += f'; filename="{value[0]}"'
                     value = value[1]
                 else:
                     value = str(value).encode('utf-8')
@@ -169,12 +163,12 @@ class upload(PyPIRCCommand):
         body.write(end_boundary)
         body = body.getvalue()
 
-        msg = "Submitting {} to {}".format(filename, self.repository)
+        msg = f"Submitting {filename} to {self.repository}"
         self.announce(msg, logging.INFO)
 
         # build the Request
         headers = {
-            'Content-type': 'multipart/form-data; boundary=%s' % boundary,
+            'Content-type': f'multipart/form-data; boundary={boundary}',
             'Content-length': str(len(body)),
             'Authorization': auth,
         }
@@ -193,14 +187,12 @@ class upload(PyPIRCCommand):
             raise
 
         if status == 200:
-            self.announce(
-                'Server response ({}): {}'.format(status, reason), logging.INFO
-            )
+            self.announce(f'Server response ({status}): {reason}', logging.INFO)
             if self.show_response:
                 text = self._read_pypi_response(result)
                 msg = '\n'.join(('-' * 75, text, '-' * 75))
                 self.announce(msg, logging.INFO)
         else:
-            msg = 'Upload failed ({}): {}'.format(status, reason)
+            msg = f'Upload failed ({status}): {reason}'
             self.announce(msg, logging.ERROR)
             raise DistutilsError(msg)

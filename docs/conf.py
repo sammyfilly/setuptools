@@ -93,27 +93,22 @@ nitpicky = True
 # Include Python intersphinx mapping to prevent failures
 # jaraco/skeleton#51
 extensions += ['sphinx.ext.intersphinx']
-intersphinx_mapping = {
-    'python': ('https://docs.python.org/3', None),
-}
-
 # Preserve authored syntax for defaults
 autodoc_preserve_defaults = True
 
-intersphinx_mapping.update(
-    {
-        'pip': ('https://pip.pypa.io/en/latest', None),
-        'build': ('https://pypa-build.readthedocs.io/en/latest', None),
-        'PyPUG': ('https://packaging.python.org/en/latest/', None),
-        'packaging': ('https://packaging.pypa.io/en/latest/', None),
-        'twine': ('https://twine.readthedocs.io/en/stable/', None),
-        'importlib-resources': (
-            'https://importlib-resources.readthedocs.io/en/latest',
-            None,
-        ),
-    }
-)
-
+intersphinx_mapping = {
+    'python': ('https://docs.python.org/3', None),
+} | {
+    'pip': ('https://pip.pypa.io/en/latest', None),
+    'build': ('https://pypa-build.readthedocs.io/en/latest', None),
+    'PyPUG': ('https://packaging.python.org/en/latest/', None),
+    'packaging': ('https://packaging.pypa.io/en/latest/', None),
+    'twine': ('https://twine.readthedocs.io/en/stable/', None),
+    'importlib-resources': (
+        'https://importlib-resources.readthedocs.io/en/latest',
+        None,
+    ),
+}
 # Support tooltips on references
 extensions += ['hoverxref.extension']
 hoverxref_auto_ref = True

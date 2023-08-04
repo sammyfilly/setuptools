@@ -167,11 +167,10 @@ class build_py(orig.build_py):
         self.manifest_files = mf = {}
         if not self.distribution.include_package_data:
             return
-        src_dirs = {}
-        for package in self.packages or ():
-            # Locate package source directory
-            src_dirs[assert_relative(self.get_package_dir(package))] = package
-
+        src_dirs = {
+            assert_relative(self.get_package_dir(package)): package
+            for package in self.packages or ()
+        }
         if (
             getattr(self, 'existing_egg_info_dir', None)
             and Path(self.existing_egg_info_dir, "SOURCES.txt").exists()
@@ -198,10 +197,8 @@ class build_py(orig.build_py):
                 if f == oldf:
                     if check.is_module(f):
                         continue  # it's a module, not data
-                else:
-                    importable = check.importable_subpackage(src_dirs[d], f)
-                    if importable:
-                        check.warn(importable)
+                elif importable := check.importable_subpackage(src_dirs[d], f):
+                    check.warn(importable)
                 mf.setdefault(src_dirs[d], []).append(path)
 
     def _filter_build_files(self, files: Iterable[str], egg_info: str) -> Iterator[str]:
@@ -240,7 +237,7 @@ class build_py(orig.build_py):
             return init_py
 
         for pkg in self.distribution.namespace_packages:
-            if pkg == package or pkg.startswith(package + '.'):
+            if pkg == package or pkg.startswith(f'{package}.'):
                 break
         else:
             return init_py
@@ -378,8 +375,7 @@ class _IncludePackageDataAbuse:
 
     def importable_subpackage(self, parent, file):
         pkg = Path(file).parent
-        parts = list(itertools.takewhile(str.isidentifier, pkg.parts))
-        if parts:
+        if parts := list(itertools.takewhile(str.isidentifier, pkg.parts)):
             return ".".join([parent, *parts])
         return None
 

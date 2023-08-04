@@ -46,8 +46,6 @@ class TestBuildScripts(support.TempdirManager):
         return build_scripts(dist)
 
     def write_sample_scripts(self, dir):
-        expected = []
-        expected.append("script1.py")
         self.write_script(
             dir,
             "script1.py",
@@ -57,19 +55,17 @@ class TestBuildScripts(support.TempdirManager):
                 "pass\n"
             ),
         )
-        expected.append("script2.py")
         self.write_script(
             dir,
             "script2.py",
             ("#!/usr/bin/python\n" "# bogus script w/ Python sh-bang\n" "pass\n"),
         )
-        expected.append("shell.sh")
         self.write_script(
             dir,
             "shell.sh",
             ("#!/bin/sh\n" "# bogus shell script w/ sh-bang\n" "exit 0\n"),
         )
-        return expected
+        return ["script1.py", "script2.py", "shell.sh"]
 
     def write_script(self, dir, name, text):
         f = open(os.path.join(dir, name), "w")

@@ -52,7 +52,7 @@ class TestDistro:
     def testCollection(self):
         # empty path should produce no distributions
         ad = pkg_resources.Environment([], platform=None, python=None)
-        assert list(ad) == []
+        assert not list(ad)
         assert ad['FooPkg'] == []
         ad.add(dist_from_fn("FooPkg-1.3_1.egg"))
         ad.add(dist_from_fn("FooPkg-1.4-py2.4-win32.egg"))
@@ -181,7 +181,7 @@ class TestDistro:
         ad = pkg_resources.Environment([])
         ws = WorkingSet([])
         # Resolving no requirements -> nothing to install
-        assert list(ws.resolve([], ad)) == []
+        assert not list(ws.resolve([], ad))
         # Request something not in the collection -> DistributionNotFound
         with pytest.raises(pkg_resources.DistributionNotFound):
             ws.resolve(parse_requirements("Foo"), ad)
@@ -194,7 +194,7 @@ class TestDistro:
         ad.add(Distribution.from_filename("Foo-0.9.egg"))
 
         # Request thing(s) that are available -> list to activate
-        for i in range(3):
+        for _ in range(3):
             targets = list(ws.resolve(parse_requirements("Foo"), ad))
             assert targets == [Foo]
             list(map(ws.add, targets))
@@ -224,7 +224,7 @@ class TestDistro:
         ad = pkg_resources.Environment([])
         ws = WorkingSet([])
         res = ws.resolve(parse_requirements("Foo;python_version<'2'"), ad)
-        assert list(res) == []
+        assert not list(res)
 
     def test_environment_marker_evaluation_positive(self):
         ad = pkg_resources.Environment([])
@@ -412,8 +412,7 @@ class TestWorkingSet:
         with pytest.raises(VersionConflict) as vc:
             ws.resolve(parse_requirements("Foo\nBar\n"))
 
-        msg = "Baz 1.0 is installed but Baz==2.0 is required by "
-        msg += repr(set(['Bar']))
+        msg = "Baz 1.0 is installed but Baz==2.0 is required by " + repr({'Bar'})
         assert vc.value.report() == msg
 
 
@@ -569,8 +568,8 @@ class TestRequirements:
         r1 = Requirement.parse("Twisted[foo,bar]>=1.2")
         r2 = Requirement.parse("Twisted[bar,FOO]>=1.2")
         assert r1 == r2
-        assert set(r1.extras) == set(("foo", "bar"))
-        assert set(r2.extras) == set(("foo", "bar"))
+        assert set(r1.extras) == {"foo", "bar"}
+        assert set(r2.extras) == {"foo", "bar"}
         assert hash(r1) == hash(r2)
         assert hash(r1) == hash(
             (
@@ -621,7 +620,7 @@ class TestRequirements:
 
 class TestParsing:
     def testEmptyParse(self):
-        assert list(parse_requirements('')) == []
+        assert not list(parse_requirements(''))
 
     def testYielding(self):
         for inp, out in [
@@ -782,7 +781,7 @@ class TestNamespaces:
             yield str(tmpdir)
             return
 
-        link_name = str(tmpdir) + '-linked'
+        link_name = f'{str(tmpdir)}-linked'
         os.symlink(str(tmpdir), link_name)
         try:
             yield type(tmpdir)(link_name)

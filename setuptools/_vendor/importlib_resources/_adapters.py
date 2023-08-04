@@ -35,7 +35,7 @@ def _io_wrapper(file, mode='r', *args, **kwargs):
     elif mode == 'rb':
         return file
     raise ValueError(
-        "Invalid mode value '{}', only 'r' and 'rb' are supported".format(mode)
+        f"Invalid mode value '{mode}', only 'r' and 'rb' are supported"
     )
 
 
@@ -118,7 +118,7 @@ class CompatibilityFiles:
         """
 
         def __init__(self, *path_parts):
-            if len(path_parts) < 1:
+            if not path_parts:
                 raise ValueError('Need at least one path part to construct a path')
             self._path = path_parts
 

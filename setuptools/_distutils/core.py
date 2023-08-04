@@ -93,7 +93,7 @@ extension_keywords = (
 )
 
 
-def setup(**attrs):  # noqa: C901
+def setup(**attrs):    # noqa: C901
     """The gateway to the Distutils: do everything your setup script needs
     to do, in a highly flexible and user-driven way.  Briefly: create a
     Distribution instance; find and parse config files; parse the command
@@ -147,9 +147,9 @@ def setup(**attrs):  # noqa: C901
         _setup_distribution = dist = klass(attrs)
     except DistutilsSetupError as msg:
         if 'name' not in attrs:
-            raise SystemExit("error in setup command: %s" % msg)
+            raise SystemExit(f"error in setup command: {msg}")
         else:
-            raise SystemExit("error in {} setup command: {}".format(attrs['name'], msg))
+            raise SystemExit(f"error in {attrs['name']} setup command: {msg}")
 
     if _setup_stop_after == "init":
         return dist
@@ -181,10 +181,7 @@ def setup(**attrs):  # noqa: C901
         return dist
 
     # And finally, run all the commands found on the command line.
-    if ok:
-        return run_commands(dist)
-
-    return dist
+    return run_commands(dist) if ok else dist
 
 
 # setup ()
@@ -202,17 +199,16 @@ def run_commands(dist):
     except KeyboardInterrupt:
         raise SystemExit("interrupted")
     except OSError as exc:
-        if DEBUG:
-            sys.stderr.write("error: {}\n".format(exc))
-            raise
-        else:
-            raise SystemExit("error: {}".format(exc))
+        if not DEBUG:
+            raise SystemExit(f"error: {exc}")
 
+        sys.stderr.write(f"error: {exc}\n")
+        raise
     except (DistutilsError, CCompilerError) as msg:
         if DEBUG:
             raise
         else:
-            raise SystemExit("error: " + str(msg))
+            raise SystemExit(f"error: {str(msg)}")
 
     return dist
 

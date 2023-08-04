@@ -23,9 +23,7 @@ def _parse_musl_version(output: str) -> Optional[_MuslVersion]:
     if len(lines) < 2 or lines[0][:4] != "musl":
         return None
     m = re.match(r"Version (\d+)\.(\d+)", lines[1])
-    if not m:
-        return None
-    return _MuslVersion(major=int(m.group(1)), minor=int(m.group(2)))
+    return None if not m else _MuslVersion(major=int(m[1]), minor=int(m[2]))
 
 
 @functools.lru_cache()

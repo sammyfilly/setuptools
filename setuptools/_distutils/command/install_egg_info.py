@@ -47,11 +47,9 @@ class install_egg_info(Command):
         if os.path.isdir(target) and not os.path.islink(target):
             dir_util.remove_tree(target, dry_run=self.dry_run)
         elif os.path.exists(target):
-            self.execute(os.unlink, (self.target,), "Removing " + target)
+            self.execute(os.unlink, (self.target,), f"Removing {target}")
         elif not os.path.isdir(self.install_dir):
-            self.execute(
-                os.makedirs, (self.install_dir,), "Creating " + self.install_dir
-            )
+            self.execute(os.makedirs, (self.install_dir,), f"Creating {self.install_dir}")
         log.info("Writing %s", target)
         if not self.dry_run:
             with open(target, 'w', encoding='UTF-8') as f:
