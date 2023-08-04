@@ -149,7 +149,7 @@ class TestDistributionBehavior(support.TempdirManager):
         with mock.patch.multiple(sys, prefix='/a', base_prefix='/b'):
             d = self.create_distribution([file])
 
-        for key in result_dict.keys():
+        for key in result_dict:
             assert key not in d.command_options.get('install', {})
 
     def test_command_packages_configfile(self, tmp_path, clear_argv):
@@ -202,7 +202,7 @@ class TestDistributionBehavior(support.TempdirManager):
             }
         )
 
-        assert len(warns) == 0
+        assert not warns
         assert 'options' not in dir(dist)
 
     def test_finalize_options(self):

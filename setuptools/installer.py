@@ -60,12 +60,10 @@ def _fetch_build_egg_no_warn(dist, req):  # noqa: C901  # is too complex (16)  #
             'when using pip to install requirements.'
         )
     quiet = 'PIP_QUIET' not in os.environ and 'PIP_VERBOSE' not in os.environ
-    if 'PIP_INDEX_URL' in os.environ:
+    if 'PIP_INDEX_URL' in os.environ or 'index_url' not in opts:
         index_url = None
-    elif 'index_url' in opts:
-        index_url = opts['index_url'][1]
     else:
-        index_url = None
+        index_url = opts['index_url'][1]
     find_links = (
         _fixup_find_links(opts['find_links'][1])[:] if 'find_links' in opts else []
     )

@@ -509,7 +509,7 @@ class Specifier(BaseSpecifier):
         return True
 
     def _compare_arbitrary(self, prospective: Version, spec: str) -> bool:
-        return str(prospective).lower() == str(spec).lower()
+        return str(prospective).lower() == spec.lower()
 
     def __contains__(self, item: Union[str, Version]) -> bool:
         """Return whether or not the item is contained in this specifier.
@@ -608,11 +608,11 @@ class Specifier(BaseSpecifier):
         ['1.3', '1.5a1']
         """
 
-        yielded = False
         found_prereleases = []
 
         kw = {"prereleases": prereleases if prereleases is not None else True}
 
+        yielded = False
         # Attempt to iterate over all the values in the iterable and if any of
         # them match, yield them.
         for version in iterable:
@@ -622,12 +622,12 @@ class Specifier(BaseSpecifier):
                 # If our version is a prerelease, and we were not set to allow
                 # prereleases, then we'll store it for later in case nothing
                 # else matches this specifier.
-                if parsed_version.is_prerelease and not (
-                    prereleases or self.prereleases
+                if (
+                    parsed_version.is_prerelease
+                    and not prereleases
+                    and not self.prereleases
                 ):
                     found_prereleases.append(version)
-                # Either this is not a prerelease, or we should have been
-                # accepting prereleases from the beginning.
                 else:
                     yielded = True
                     yield version
@@ -636,8 +636,7 @@ class Specifier(BaseSpecifier):
         # any values, and if we have not and we have any prereleases stored up
         # then we will go ahead and yield the prereleases.
         if not yielded and found_prereleases:
-            for version in found_prereleases:
-                yield version
+            yield from found_prereleases
 
 
 _prefix_regex = re.compile(r"^([0-9]+)((?:a|b|c|rc)[0-9]+)$")
@@ -646,8 +645,7 @@ _prefix_regex = re.compile(r"^([0-9]+)((?:a|b|c|rc)[0-9]+)$")
 def _version_split(version: str) -> List[str]:
     result: List[str] = []
     for item in version.split("."):
-        match = _prefix_regex.search(item)
-        if match:
+        if match := _prefix_regex.search(item):
             result.extend(match.groups())
         else:
             result.append(item)
@@ -707,12 +705,9 @@ class SpecifierSet(BaseSpecifier):
         # strip each item to remove leading/trailing whitespace.
         split_specifiers = [s.strip() for s in specifiers.split(",") if s.strip()]
 
-        # Parsed each individual specifier, attempting first to make it a
-        # Specifier.
-        parsed: Set[Specifier] = set()
-        for specifier in split_specifiers:
-            parsed.add(Specifier(specifier))
-
+        parsed: Set[Specifier] = {
+            Specifier(specifier) for specifier in split_specifiers
+        }
         # Turn our parsed specifiers into a frozen set and save them for later.
         self._specs = frozenset(parsed)
 
@@ -730,12 +725,7 @@ class SpecifierSet(BaseSpecifier):
         # If we don't have any specifiers, and we don't have a forced value,
         # then we'll just return None since we don't know if this should have
         # pre-releases or not.
-        if not self._specs:
-            return None
-
-        # Otherwise we'll see if any of the given specifiers accept
-        # prereleases, if any of them do we'll return True, otherwise False.
-        return any(s.prereleases for s in self._specs)
+        return None if not self._specs else any(s.prereleases for s in self._specs)
 
     @prereleases.setter
     def prereleases(self, value: bool) -> None:

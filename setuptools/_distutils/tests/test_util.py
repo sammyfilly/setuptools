@@ -112,9 +112,7 @@ class TestUtil:
         os.path.isabs = _isabs
 
         def _splitdrive(path):
-            if path.startswith('c:'):
-                return ('', path.replace('c:', ''))
-            return ('', path)
+            return ('', path.replace('c:', '')) if path.startswith('c:') else ('', path)
 
         os.path.splitdrive = _splitdrive
 

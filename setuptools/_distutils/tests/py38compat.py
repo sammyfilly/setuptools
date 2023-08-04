@@ -12,7 +12,7 @@ ModuleNotFoundError = getattr(builtins, 'ModuleNotFoundError', ImportError)
 
 try:
     from test.support.warnings_helper import check_warnings
-except (ModuleNotFoundError, ImportError):
+except ImportError:
     from test.support import check_warnings
 
 
@@ -24,7 +24,7 @@ try:
         skip_unless_symlink,
         temp_dir,
     )
-except (ModuleNotFoundError, ImportError):
+except ImportError:
     from test.support import (
         rmtree,
         EnvironmentVarGuard,
@@ -39,7 +39,7 @@ try:
         DirsOnSysPath,
         CleanImport,
     )
-except (ModuleNotFoundError, ImportError):
+except ImportError:
     from test.support import (
         DirsOnSysPath,
         CleanImport,

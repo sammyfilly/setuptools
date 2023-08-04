@@ -95,35 +95,30 @@ class bdist_dumb(Command):
             self.run_command('build')
 
         install = self.reinitialize_command('install', reinit_subcommands=1)
-        install.root = self.bdist_dir
         install.skip_build = self.skip_build
         install.warn_dir = 0
 
+        install.root = self.bdist_dir
         log.info("installing to %s", self.bdist_dir)
         self.run_command('install')
 
         # And make an archive relative to the root of the
         # pseudo-installation tree.
-        archive_basename = "{}.{}".format(
-            self.distribution.get_fullname(), self.plat_name
-        )
+        archive_basename = f"{self.distribution.get_fullname()}.{self.plat_name}"
 
         pseudoinstall_root = os.path.join(self.dist_dir, archive_basename)
         if not self.relative:
             archive_root = self.bdist_dir
-        else:
-            if self.distribution.has_ext_modules() and (
+        elif self.distribution.has_ext_modules() and (
                 install.install_base != install.install_platbase
             ):
-                raise DistutilsPlatformError(
-                    "can't make a dumb built distribution where "
-                    "base and platbase are different (%s, %s)"
-                    % (repr(install.install_base), repr(install.install_platbase))
-                )
-            else:
-                archive_root = os.path.join(
-                    self.bdist_dir, ensure_relative(install.install_base)
-                )
+            raise DistutilsPlatformError(
+                f"can't make a dumb built distribution where base and platbase are different ({repr(install.install_base)}, {repr(install.install_platbase)})"
+            )
+        else:
+            archive_root = os.path.join(
+                self.bdist_dir, ensure_relative(install.install_base)
+            )
 
         # Make the archive
         filename = self.make_archive(

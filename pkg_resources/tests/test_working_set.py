@@ -49,10 +49,9 @@ def parse_distributions(s):
             metadata = Metadata(('requires.txt', requires))
         else:
             metadata = None
-        dist = pkg_resources.Distribution(
+        yield pkg_resources.Distribution(
             project_name=name, version=version, metadata=metadata
         )
-        yield dist
 
 
 class FakeInstaller:
@@ -83,10 +82,7 @@ def parametrize_test_working_set_resolve(*test_list):
         installed_dists = list(parse_distributions(installed_dists))
         installable_dists = list(parse_distributions(installable_dists))
         requirements = list(pkg_resources.parse_requirements(requirements))
-        for id_, replace_conflicting, expected in (
-            (name, False, expected1),
-            (name + '_replace_conflicting', True, expected2),
-        ):
+        for id_, replace_conflicting, expected in ((name, False, expected1), (f'{name}_replace_conflicting', True, expected2)):
             idlist.append(id_)
             expected = strip_comments(expected.strip())
             if re.match(r'\w+$', expected):

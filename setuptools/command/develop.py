@@ -53,7 +53,7 @@ class develop(namespaces.DevelopInstaller, easy_install):
         # pick up setup-dir .egg files only: no .egg-info
         self.package_index.scan(glob.glob('*.egg'))
 
-        egg_link_fn = ei.egg_name + '.egg-link'
+        egg_link_fn = f'{ei.egg_name}.egg-link'
         self.egg_link = os.path.join(self.install_dir, egg_link_fn)
         self.egg_base = ei.egg_base
         if self.egg_path is None:
@@ -126,9 +126,8 @@ class develop(namespaces.DevelopInstaller, easy_install):
     def uninstall_link(self):
         if os.path.exists(self.egg_link):
             log.info("Removing %s (link to %s)", self.egg_link, self.egg_base)
-            egg_link_file = open(self.egg_link)
-            contents = [line.rstrip() for line in egg_link_file]
-            egg_link_file.close()
+            with open(self.egg_link) as egg_link_file:
+                contents = [line.rstrip() for line in egg_link_file]
             if contents not in ([self.egg_path], [self.egg_path, self.setup_path]):
                 log.warn("Link points to %s: uninstall aborted", contents)
                 return

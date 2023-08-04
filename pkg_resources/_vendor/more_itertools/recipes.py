@@ -639,7 +639,7 @@ def random_combination_with_replacement(iterable, r):
     """
     pool = tuple(iterable)
     n = len(pool)
-    indices = sorted(randrange(n) for i in range(r))
+    indices = sorted(randrange(n) for _ in range(r))
     return tuple(pool[i] for i in indices)
 
 
@@ -881,10 +881,10 @@ def batched(iterable, n):
 
     it = iter(iterable)
     while True:
-        batch = list(islice(it, n))
-        if not batch:
+        if batch := list(islice(it, n)):
+            yield batch
+        else:
             break
-        yield batch
 
 
 def transpose(it):

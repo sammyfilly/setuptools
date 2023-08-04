@@ -207,30 +207,27 @@ class build_ext(Command):
             self.library_dirs.append(sys.base_exec_prefix)
 
             # Use the .lib files for the correct architecture
-            if self.plat_name == 'win32':
-                suffix = 'win32'
-            else:
-                # win-amd64
-                suffix = self.plat_name[4:]
+            suffix = 'win32' if self.plat_name == 'win32' else self.plat_name[4:]
             new_lib = os.path.join(sys.exec_prefix, 'PCbuild')
             if suffix:
                 new_lib = os.path.join(new_lib, suffix)
             self.library_dirs.append(new_lib)
 
-        # For extensions under Cygwin, Python's library directory must be
-        # appended to library_dirs
         if sys.platform[:6] == 'cygwin':
-            if not sysconfig.python_build:
-                # building third party extensions
-                self.library_dirs.append(
-                    os.path.join(
-                        sys.prefix, "lib", "python" + get_python_version(), "config"
-                    )
-                )
-            else:
+            if sysconfig.python_build:
                 # building python standard extensions
                 self.library_dirs.append('.')
 
+            else:
+                # building third party extensions
+                self.library_dirs.append(
+                    os.path.join(
+                        sys.prefix,
+                        "lib",
+                        f"python{get_python_version()}",
+                        "config",
+                    )
+                )
         # For building extensions with a shared Python library,
         # Python's library directory must be appended to library_dirs
         # See Issues: #1600860, #4366
@@ -257,11 +254,7 @@ class build_ext(Command):
         if self.undef:
             self.undef = self.undef.split(',')
 
-        if self.swig_opts is None:
-            self.swig_opts = []
-        else:
-            self.swig_opts = self.swig_opts.split(' ')
-
+        self.swig_opts = [] if self.swig_opts is None else self.swig_opts.split(' ')
         # Finally add the user include and library directories if requested
         if self.user:
             user_include = os.path.join(USER_BASE, "include")
@@ -344,7 +337,7 @@ class build_ext(Command):
         # Now actually compile and link everything.
         self.build_extensions()
 
-    def check_extensions_list(self, extensions):  # noqa: C901
+    def check_extensions_list(self, extensions):    # noqa: C901
         """Ensure that the list of extensions (presumably provided as a
         command option 'extensions') is valid, i.e. it is a list of
         Extension objects.  We also support the old-style list of 2-tuples,
@@ -416,14 +409,11 @@ class build_ext(Command):
                     "'def_file' element of build info dict " "no longer supported"
                 )
 
-            # Non-trivial stuff: 'macros' split into 'define_macros'
-            # and 'undef_macros'.
-            macros = build_info.get('macros')
-            if macros:
+            if macros := build_info.get('macros'):
                 ext.define_macros = []
                 ext.undef_macros = []
                 for macro in macros:
-                    if not (isinstance(macro, tuple) and len(macro) in (1, 2)):
+                    if not (isinstance(macro, tuple) and len(macro) in {1, 2}):
                         raise DistutilsSetupError(
                             "'macros' element of build info dict "
                             "must be 1- or 2-tuple"
@@ -450,13 +440,7 @@ class build_ext(Command):
         # can probably assume that it *isn't*!).
         self.check_extensions_list(self.extensions)
 
-        # And build the list of output (built) filenames.  Note that this
-        # ignores the 'inplace' flag, and assumes everything goes in the
-        # "build" tree.
-        outputs = []
-        for ext in self.extensions:
-            outputs.append(self.get_ext_fullpath(ext.name))
-        return outputs
+        return [self.get_ext_fullpath(ext.name) for ext in self.extensions]
 
     def build_extensions(self):
         # First, sanity-check the 'extensions' list
@@ -499,7 +483,7 @@ class build_ext(Command):
         except (CCompilerError, DistutilsError, CompileError) as e:
             if not ext.optional:
                 raise
-            self.warn('building extension "{}" failed: {}'.format(ext.name, e))
+            self.warn(f'building extension "{ext.name}" failed: {e}')
 
     def build_extension(self, ext):
         sources = ext.sources
@@ -612,7 +596,7 @@ class build_ext(Command):
         for source in sources:
             (base, ext) = os.path.splitext(source)
             if ext == ".i":  # SWIG interface file
-                new_sources.append(base + '_wrap' + target_ext)
+                new_sources.append(f'{base}_wrap{target_ext}')
                 swig_sources.append(source)
                 swig_targets[source] = new_sources[-1]
             else:
@@ -629,9 +613,7 @@ class build_ext(Command):
 
         # Do not override commandline arguments
         if not self.swig_opts:
-            for o in extension.swig_opts:
-                swig_cmd.append(o)
-
+            swig_cmd.extend(iter(extension.swig_opts))
         for source in swig_sources:
             target = swig_targets[source]
             log.info("swigging %s to %s", source, target)
@@ -683,7 +665,7 @@ class build_ext(Command):
 
         # the inplace option requires to find the package directory
         # using the build_py command for that
-        package = '.'.join(modpath[0:-1])
+        package = '.'.join(modpath[:-1])
         build_py = self.get_finalized_command('build_py')
         package_dir = os.path.abspath(build_py.get_package_dir(package))
 
@@ -695,10 +677,7 @@ class build_ext(Command):
         """Returns the fullname of a given extension name.
 
         Adds the `package.` prefix"""
-        if self.package is None:
-            return ext_name
-        else:
-            return self.package + '.' + ext_name
+        return ext_name if self.package is None else f'{self.package}.{ext_name}'
 
     def get_ext_filename(self, ext_name):
         r"""Convert the name of an extension (eg. "foo.bar") into the name
@@ -725,14 +704,14 @@ class build_ext(Command):
         except UnicodeEncodeError:
             suffix = 'U_' + name.encode('punycode').replace(b'-', b'_').decode('ascii')
         else:
-            suffix = "_" + name
+            suffix = f"_{name}"
 
-        initfunc_name = "PyInit" + suffix
+        initfunc_name = f"PyInit{suffix}"
         if initfunc_name not in ext.export_symbols:
             ext.export_symbols.append(initfunc_name)
         return ext.export_symbols
 
-    def get_libraries(self, ext):  # noqa: C901
+    def get_libraries(self, ext):    # noqa: C901
         """Return the list of libraries to link against when building a
         shared extension.  On most platforms, this is just 'ext.libraries';
         on Windows, we add the Python library (eg. python20.dll).
@@ -748,7 +727,7 @@ class build_ext(Command):
             if not isinstance(self.compiler, MSVCCompiler):
                 template = "python%d%d"
                 if self.debug:
-                    template = template + '_d'
+                    template += '_d'
                 pythonlib = template % (
                     sys.hexversion >> 24,
                     (sys.hexversion >> 16) & 0xFF,
@@ -783,6 +762,6 @@ class build_ext(Command):
 
             if link_libpython:
                 ldversion = get_config_var('LDVERSION')
-                return ext.libraries + ['python' + ldversion]
+                return ext.libraries + [f'python{ldversion}']
 
         return ext.libraries + py37compat.pythonlib()

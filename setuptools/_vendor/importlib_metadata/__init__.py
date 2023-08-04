@@ -114,8 +114,7 @@ class Sectioned:
         lines = filter(filter_, map(str.strip, text.splitlines()))
         name = None
         for value in lines:
-            section_match = value.startswith('[') and value.endswith(']')
-            if section_match:
+            if section_match := value.startswith('[') and value.endswith(']'):
                 name = value.strip('[]')
                 continue
             yield Pair(name, value)
@@ -739,7 +738,7 @@ class MetadataPathFinder(NullFinder, DistributionFinder):
             path.search(prepared) for path in map(FastPath, paths)
         )
 
-    def invalidate_caches(cls):
+    def invalidate_caches(self):
         FastPath.__new__.cache_clear()
 
 

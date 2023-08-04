@@ -329,9 +329,7 @@ class ConfigDiscovery:
 
     @property
     def _package_dir(self) -> Dict[str, str]:
-        if self.dist.package_dir is None:
-            return {}
-        return self.dist.package_dir
+        return {} if self.dist.package_dir is None else self.dist.package_dir
 
     def __call__(self, force=False, name=True, ignore_ext_modules=False):
         """Automatically discover missing configuration fields
@@ -487,11 +485,10 @@ class ConfigDiscovery:
 
         log.debug("No `name` configuration, performing automatic discovery")
 
-        name = (
+        if name := (
             self._find_name_single_package_or_module()
             or self._find_name_from_packages()
-        )
-        if name:
+        ):
             self.dist.metadata.name = name
 
     def _find_name_single_package_or_module(self) -> Optional[str]:
@@ -512,8 +509,9 @@ class ConfigDiscovery:
         packages = remove_stubs(sorted(self.dist.packages, key=len))
         package_dir = self.dist.package_dir or {}
 
-        parent_pkg = find_parent_package(packages, package_dir, self._root_dir)
-        if parent_pkg:
+        if parent_pkg := find_parent_package(
+            packages, package_dir, self._root_dir
+        ):
             log.debug(f"Common parent package detected, name: {parent_pkg}")
             return parent_pkg
 

@@ -148,7 +148,7 @@ class ArchiveUtilTestCase(support.TempdirManager):
             os.chdir(old_dir)
 
         # check if the compressed tarball was created
-        tarball = base_name + '.tar.gz'
+        tarball = f'{base_name}.tar.gz'
         assert os.path.exists(tarball)
 
         # now create another tarball using `tar`
@@ -176,7 +176,7 @@ class ArchiveUtilTestCase(support.TempdirManager):
             make_tarball(base_name, 'dist', compress=None)
         finally:
             os.chdir(old_dir)
-        tarball = base_name + '.tar'
+        tarball = f'{base_name}.tar'
         assert os.path.exists(tarball)
 
         # now for a dry_run
@@ -187,7 +187,7 @@ class ArchiveUtilTestCase(support.TempdirManager):
             make_tarball(base_name, 'dist', compress=None, dry_run=True)
         finally:
             os.chdir(old_dir)
-        tarball = base_name + '.tar'
+        tarball = f'{base_name}.tar'
         assert os.path.exists(tarball)
 
     @pytest.mark.skipif("not find_executable('compress')")
@@ -204,7 +204,7 @@ class ArchiveUtilTestCase(support.TempdirManager):
                 make_tarball(base_name, 'dist', compress='compress')
         finally:
             os.chdir(old_dir)
-        tarball = base_name + '.tar.Z'
+        tarball = f'{base_name}.tar.Z'
         assert os.path.exists(tarball)
         assert len(w.warnings) == 1
 
@@ -231,7 +231,7 @@ class ArchiveUtilTestCase(support.TempdirManager):
             make_zipfile(base_name, 'dist')
 
         # check if the compressed tarball was created
-        tarball = base_name + '.zip'
+        tarball = f'{base_name}.zip'
         assert os.path.exists(tarball)
         with zipfile.ZipFile(tarball) as zf:
             assert sorted(zf.namelist()) == self._zip_created_files
@@ -256,7 +256,7 @@ class ArchiveUtilTestCase(support.TempdirManager):
         with path.Path(tmpdir):
             make_zipfile(base_name, 'dist')
 
-        tarball = base_name + '.zip'
+        tarball = f'{base_name}.zip'
         assert called == [((tarball, "w"), {'compression': zipfile.ZIP_STORED})]
         assert os.path.exists(tarball)
         with zipfile.ZipFile(tarball) as zf:

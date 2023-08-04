@@ -15,9 +15,10 @@ def show_formats():
     """Print list of available formats (arguments to "--format" option)."""
     from ..fancy_getopt import FancyGetopt
 
-    formats = []
-    for format in bdist.format_commands:
-        formats.append(("formats=" + format, None, bdist.format_commands[format][1]))
+    formats = [
+        (f"formats={format}", None, bdist.format_commands[format][1])
+        for format in bdist.format_commands
+    ]
     pretty_printer = FancyGetopt(formats)
     pretty_printer.print_help("List of available distribution formats:")
 
@@ -101,7 +102,6 @@ class bdist(Command):
         self.owner = None
 
     def finalize_options(self):
-        # have to finalize 'plat_name' before 'bdist_base'
         if self.plat_name is None:
             if self.skip_build:
                 self.plat_name = get_platform()
@@ -113,7 +113,7 @@ class bdist(Command):
         # "build/bdist.<plat>/dumb", "build/bdist.<plat>/rpm", etc.)
         if self.bdist_base is None:
             build_base = self.get_finalized_command('build').build_base
-            self.bdist_base = os.path.join(build_base, 'bdist.' + self.plat_name)
+            self.bdist_base = os.path.join(build_base, f'bdist.{self.plat_name}')
 
         self.ensure_string_list('formats')
         if self.formats is None:
@@ -135,7 +135,7 @@ class bdist(Command):
             try:
                 commands.append(self.format_commands[format][0])
             except KeyError:
-                raise DistutilsOptionError("invalid format '%s'" % format)
+                raise DistutilsOptionError(f"invalid format '{format}'")
 
         # Reinitialize and run each command.
         for i in range(len(self.formats)):

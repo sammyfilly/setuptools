@@ -91,10 +91,7 @@ class OrderedSet(MutableSet, Sequence):
             return [self.items[i] for i in index]
         elif hasattr(index, "__index__") or isinstance(index, slice):
             result = self.items[index]
-            if isinstance(result, list):
-                return self.__class__(result)
-            else:
-                return result
+            return self.__class__(result) if isinstance(result, list) else result
         else:
             raise TypeError("Don't know how to index an OrderedSet by %r" % index)
 
@@ -113,16 +110,7 @@ class OrderedSet(MutableSet, Sequence):
         return self.__class__(self)
 
     def __getstate__(self):
-        if len(self) == 0:
-            # The state can't be an empty list.
-            # We need to return a truthy value, or else __setstate__ won't be run.
-            #
-            # This could have been done more gracefully by always putting the state
-            # in a tuple, but this way is backwards- and forwards- compatible with
-            # previous versions of OrderedSet.
-            return (None,)
-        else:
-            return list(self)
+        return (None, ) if len(self) == 0 else list(self)
 
     def __setstate__(self, state):
         if state == (None,):
@@ -180,9 +168,7 @@ class OrderedSet(MutableSet, Sequence):
             for item in sequence:
                 item_index = self.add(item)
         except TypeError:
-            raise ValueError(
-                "Argument needs to be an iterable, got %s" % type(sequence)
-            )
+            raise ValueError(f"Argument needs to be an iterable, got {type(sequence)}")
         return item_index
 
     def index(self, key):
@@ -274,7 +260,7 @@ class OrderedSet(MutableSet, Sequence):
 
     def __repr__(self):
         if not self:
-            return "%s()" % (self.__class__.__name__,)
+            return f"{self.__class__.__name__}()"
         return "%s(%r)" % (self.__class__.__name__, list(self))
 
     def __eq__(self, other):
@@ -386,9 +372,7 @@ class OrderedSet(MutableSet, Sequence):
             >>> OrderedSet([1, 2, 3]).issubset({1, 4, 3, 5})
             False
         """
-        if len(self) > len(other):  # Fast check for obvious cases
-            return False
-        return all(item in other for item in self)
+        return False if len(self) > len(other) else all(item in other for item in self)
 
     def issuperset(self, other):
         """
@@ -402,9 +386,7 @@ class OrderedSet(MutableSet, Sequence):
             >>> OrderedSet([1, 4, 3, 5]).issuperset({1, 2, 3})
             False
         """
-        if len(self) < len(other):  # Fast check for obvious cases
-            return False
-        return all(item in self for item in other)
+        return False if len(self) < len(other) else all(item in self for item in other)
 
     def symmetric_difference(self, other):
         """

@@ -9,6 +9,7 @@ Written by:   Fred L. Drake, Jr.
 Email:        <fdrake@acm.org>
 """
 
+
 import os
 import re
 import sys
@@ -32,13 +33,12 @@ BASE_EXEC_PREFIX = os.path.normpath(sys.base_exec_prefix)
 # set for cross builds
 if "_PYTHON_PROJECT_BASE" in os.environ:
     project_base = os.path.abspath(os.environ["_PYTHON_PROJECT_BASE"])
+elif sys.executable:
+    project_base = os.path.dirname(os.path.abspath(sys.executable))
 else:
-    if sys.executable:
-        project_base = os.path.dirname(os.path.abspath(sys.executable))
-    else:
-        # sys.executable can be empty if argv[0] has been changed and Python is
-        # unable to retrieve the real program name
-        project_base = os.getcwd()
+    # sys.executable can be empty if argv[0] has been changed and Python is
+    # unable to retrieve the real program name
+    project_base = os.getcwd()
 
 
 def _is_python_source_dir(d):
@@ -207,10 +207,7 @@ def _get_python_inc_nt(prefix, spec_prefix, plat_specific):
 
 # allow this behavior to be monkey-patched. Ref pypa/distutils#2.
 def _posix_lib(standard_lib, libpython, early_prefix, prefix):
-    if standard_lib:
-        return libpython
-    else:
-        return os.path.join(libpython, "site-packages")
+    return libpython if standard_lib else os.path.join(libpython, "site-packages")
 
 
 def get_python_lib(plat_specific=0, standard_lib=0, prefix=None):
@@ -267,108 +264,106 @@ def get_python_lib(plat_specific=0, standard_lib=0, prefix=None):
         )
 
 
-def customize_compiler(compiler):  # noqa: C901
+def customize_compiler(compiler):    # noqa: C901
     """Do any platform-specific customization of a CCompiler instance.
 
     Mainly needed on Unix, so we can plug in the information that
     varies across Unices and is stored in Python's Makefile.
     """
-    if compiler.compiler_type == "unix":
-        if sys.platform == "darwin":
-            # Perform first-time customization of compiler-related
-            # config vars on OS X now that we know we need a compiler.
-            # This is primarily to support Pythons from binary
-            # installers.  The kind and paths to build tools on
-            # the user system may vary significantly from the system
-            # that Python itself was built on.  Also the user OS
-            # version and build tools may not support the same set
-            # of CPU architectures for universal builds.
-            global _config_vars
-            # Use get_config_var() to ensure _config_vars is initialized.
-            if not get_config_var('CUSTOMIZED_OSX_COMPILER'):
-                import _osx_support
+    if compiler.compiler_type != "unix":
+        return
+    if sys.platform == "darwin":
+        # Perform first-time customization of compiler-related
+        # config vars on OS X now that we know we need a compiler.
+        # This is primarily to support Pythons from binary
+        # installers.  The kind and paths to build tools on
+        # the user system may vary significantly from the system
+        # that Python itself was built on.  Also the user OS
+        # version and build tools may not support the same set
+        # of CPU architectures for universal builds.
+        global _config_vars
+        # Use get_config_var() to ensure _config_vars is initialized.
+        if not get_config_var('CUSTOMIZED_OSX_COMPILER'):
+            import _osx_support
 
-                _osx_support.customize_compiler(_config_vars)
-                _config_vars['CUSTOMIZED_OSX_COMPILER'] = 'True'
+            _osx_support.customize_compiler(_config_vars)
+            _config_vars['CUSTOMIZED_OSX_COMPILER'] = 'True'
 
-        (
-            cc,
-            cxx,
-            cflags,
-            ccshared,
-            ldshared,
-            shlib_suffix,
-            ar,
-            ar_flags,
-        ) = get_config_vars(
-            'CC',
-            'CXX',
-            'CFLAGS',
-            'CCSHARED',
-            'LDSHARED',
-            'SHLIB_SUFFIX',
-            'AR',
-            'ARFLAGS',
-        )
+    (
+        cc,
+        cxx,
+        cflags,
+        ccshared,
+        ldshared,
+        shlib_suffix,
+        ar,
+        ar_flags,
+    ) = get_config_vars(
+        'CC',
+        'CXX',
+        'CFLAGS',
+        'CCSHARED',
+        'LDSHARED',
+        'SHLIB_SUFFIX',
+        'AR',
+        'ARFLAGS',
+    )
 
-        if 'CC' in os.environ:
-            newcc = os.environ['CC']
-            if 'LDSHARED' not in os.environ and ldshared.startswith(cc):
-                # If CC is overridden, use that as the default
-                #       command for LDSHARED as well
-                ldshared = newcc + ldshared[len(cc) :]
-            cc = newcc
-        if 'CXX' in os.environ:
-            cxx = os.environ['CXX']
-        if 'LDSHARED' in os.environ:
-            ldshared = os.environ['LDSHARED']
-        if 'CPP' in os.environ:
-            cpp = os.environ['CPP']
-        else:
-            cpp = cc + " -E"  # not always
-        if 'LDFLAGS' in os.environ:
-            ldshared = ldshared + ' ' + os.environ['LDFLAGS']
-        if 'CFLAGS' in os.environ:
-            cflags = cflags + ' ' + os.environ['CFLAGS']
-            ldshared = ldshared + ' ' + os.environ['CFLAGS']
-        if 'CPPFLAGS' in os.environ:
-            cpp = cpp + ' ' + os.environ['CPPFLAGS']
-            cflags = cflags + ' ' + os.environ['CPPFLAGS']
-            ldshared = ldshared + ' ' + os.environ['CPPFLAGS']
-        if 'AR' in os.environ:
-            ar = os.environ['AR']
-        if 'ARFLAGS' in os.environ:
-            archiver = ar + ' ' + os.environ['ARFLAGS']
-        else:
-            archiver = ar + ' ' + ar_flags
+    if 'CC' in os.environ:
+        newcc = os.environ['CC']
+        if 'LDSHARED' not in os.environ and ldshared.startswith(cc):
+            # If CC is overridden, use that as the default
+            #       command for LDSHARED as well
+            ldshared = newcc + ldshared[len(cc) :]
+        cc = newcc
+    if 'CXX' in os.environ:
+        cxx = os.environ['CXX']
+    if 'LDSHARED' in os.environ:
+        ldshared = os.environ['LDSHARED']
+    cpp = os.environ.get('CPP', f"{cc} -E")
+    if 'LDFLAGS' in os.environ:
+        ldshared = f'{ldshared} ' + os.environ['LDFLAGS']
+    if 'CFLAGS' in os.environ:
+        cflags = f'{cflags} ' + os.environ['CFLAGS']
+        ldshared = f'{ldshared} ' + os.environ['CFLAGS']
+    if 'CPPFLAGS' in os.environ:
+        cpp = f'{cpp} ' + os.environ['CPPFLAGS']
+        cflags = f'{cflags} ' + os.environ['CPPFLAGS']
+        ldshared = f'{ldshared} ' + os.environ['CPPFLAGS']
+    if 'AR' in os.environ:
+        ar = os.environ['AR']
+    if 'ARFLAGS' in os.environ:
+        archiver = f'{ar} ' + os.environ['ARFLAGS']
+    else:
+        archiver = f'{ar} {ar_flags}'
 
-        cc_cmd = cc + ' ' + cflags
-        compiler.set_executables(
-            preprocessor=cpp,
-            compiler=cc_cmd,
-            compiler_so=cc_cmd + ' ' + ccshared,
-            compiler_cxx=cxx,
-            linker_so=ldshared,
-            linker_exe=cc,
-            archiver=archiver,
-        )
+    cc_cmd = f'{cc} {cflags}'
+    compiler.set_executables(
+        preprocessor=cpp,
+        compiler=cc_cmd,
+        compiler_so=f'{cc_cmd} {ccshared}',
+        compiler_cxx=cxx,
+        linker_so=ldshared,
+        linker_exe=cc,
+        archiver=archiver,
+    )
 
-        if 'RANLIB' in os.environ and compiler.executables.get('ranlib', None):
-            compiler.set_executables(ranlib=os.environ['RANLIB'])
+    if 'RANLIB' in os.environ and compiler.executables.get('ranlib', None):
+        compiler.set_executables(ranlib=os.environ['RANLIB'])
 
-        compiler.shared_lib_extension = shlib_suffix
+    compiler.shared_lib_extension = shlib_suffix
 
 
 def get_config_h_filename():
     """Return full pathname of installed pyconfig.h file."""
-    if python_build:
-        if os.name == "nt":
-            inc_dir = os.path.join(_sys_home or project_base, "PC")
-        else:
-            inc_dir = _sys_home or project_base
-        return os.path.join(inc_dir, 'pyconfig.h')
-    else:
+    if not python_build:
         return sysconfig.get_config_h_filename()
+    inc_dir = (
+        os.path.join(_sys_home or project_base, "PC")
+        if os.name == "nt"
+        else _sys_home or project_base
+    )
+    return os.path.join(inc_dir, 'pyconfig.h')
 
 
 def get_makefile_filename():
@@ -393,7 +388,7 @@ _findvar1_rx = re.compile(r"\$\(([A-Za-z][A-Za-z0-9_]*)\)")
 _findvar2_rx = re.compile(r"\${([A-Za-z][A-Za-z0-9_]*)}")
 
 
-def parse_makefile(fn, g=None):  # noqa: C901
+def parse_makefile(fn, g=None):    # noqa: C901
     """Parse a Makefile-style file.
 
     A dictionary containing name/value pairs is returned.  If an
@@ -415,8 +410,7 @@ def parse_makefile(fn, g=None):  # noqa: C901
         line = fp.readline()
         if line is None:  # eof
             break
-        m = _variable_rx.match(line)
-        if m:
+        if m := _variable_rx.match(line):
             n, v = m.group(1, 2)
             v = v.strip()
             # `$$' is a literal `$' in make
@@ -443,8 +437,7 @@ def parse_makefile(fn, g=None):  # noqa: C901
     while notdone:
         for name in list(notdone):
             value = notdone[name]
-            m = _findvar1_rx.search(value) or _findvar2_rx.search(value)
-            if m:
+            if m := _findvar1_rx.search(value) or _findvar2_rx.search(value):
                 n = m.group(1)
                 found = True
                 if n in done:
@@ -460,11 +453,11 @@ def parse_makefile(fn, g=None):  # noqa: C901
                     if name.startswith('PY_') and name[3:] in renamed_variables:
                         item = ""
 
-                    elif 'PY_' + n in notdone:
+                    elif f'PY_{n}' in notdone:
                         found = False
 
                     else:
-                        item = str(done['PY_' + n])
+                        item = str(done[f'PY_{n}'])
                 else:
                     done[n] = item = ""
                 if found:
@@ -517,10 +510,9 @@ def expand_makefile_vars(s, vars):
     # according to make's variable expansion semantics.
 
     while True:
-        m = _findvar1_rx.search(s) or _findvar2_rx.search(s)
-        if m:
+        if m := _findvar1_rx.search(s) or _findvar2_rx.search(s):
             (beg, end) = m.span()
-            s = s[0:beg] + vars.get(m.group(1)) + s[end:]
+            s = s[:beg] + vars.get(m.group(1)) + s[end:]
         else:
             break
     return s

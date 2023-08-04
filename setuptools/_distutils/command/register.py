@@ -87,14 +87,14 @@ class register(PyPIRCCommand):
             self.has_config = True
         else:
             if self.repository not in ('pypi', self.DEFAULT_REPOSITORY):
-                raise ValueError('%s not found in .pypirc' % self.repository)
+                raise ValueError(f'{self.repository} not found in .pypirc')
             if self.repository == 'pypi':
                 self.repository = self.DEFAULT_REPOSITORY
             self.has_config = False
 
     def classifiers(self):
         '''Fetch the list of classifiers from the server.'''
-        url = self.repository + '?:action=list_classifiers'
+        url = f'{self.repository}?:action=list_classifiers'
         response = urllib.request.urlopen(url)
         log.info(self._read_pypi_response(response))
 
@@ -104,7 +104,7 @@ class register(PyPIRCCommand):
         (code, result) = self.post_to_server(self.build_post_data('verify'))
         log.info('Server response (%s): %s', code, result)
 
-    def send_metadata(self):  # noqa: C901
+    def send_metadata(self):    # noqa: C901
         '''Send the metadata to the package index server.
 
         Well, do the following:
@@ -174,7 +174,7 @@ Your selection [default 1]: ''',
             auth.add_password(self.realm, host, username, password)
             # send the info to the server and report the result
             code, result = self.post_to_server(self.build_post_data('submit'), auth)
-            self.announce('Server response ({}): {}'.format(code, result), logging.INFO)
+            self.announce(f'Server response ({code}): {result}', logging.INFO)
 
             # possibly save the login
             if code == 200:
@@ -191,7 +191,7 @@ Your selection [default 1]: ''',
                         logging.INFO,
                     )
                     self.announce(
-                        '(the login will be stored in %s)' % self._get_rc_file(),
+                        f'(the login will be stored in {self._get_rc_file()})',
                         logging.INFO,
                     )
                     choice = 'X'
@@ -226,8 +226,7 @@ Your selection [default 1]: ''',
                 log.info('You will receive an email shortly.')
                 log.info('Follow the instructions in it to ' 'complete registration.')
         elif choice == '3':
-            data = {':action': 'password_reset'}
-            data['email'] = ''
+            data = {':action': 'password_reset', 'email': ''}
             while not data['email']:
                 data['email'] = input('Your email address: ')
             code, result = self.post_to_server(data)
@@ -261,17 +260,14 @@ Your selection [default 1]: ''',
             data['metadata_version'] = '1.1'
         return data
 
-    def post_to_server(self, data, auth=None):  # noqa: C901
+    def post_to_server(self, data, auth=None):    # noqa: C901
         '''Post a query to the server, and return a string response.'''
         if 'name' in data:
-            self.announce(
-                'Registering {} to {}'.format(data['name'], self.repository),
-                logging.INFO,
-            )
+            self.announce(f"Registering {data['name']} to {self.repository}", logging.INFO)
         # Build up the MIME payload for the urllib2 POST data
         boundary = '--------------GHSKFJDLGDS7543FJKLFHRE75642756743254'
         sep_boundary = '\n--' + boundary
-        end_boundary = sep_boundary + '--'
+        end_boundary = f'{sep_boundary}--'
         body = io.StringIO()
         for key, value in data.items():
             # handle multiple entries for the same name
@@ -291,8 +287,7 @@ Your selection [default 1]: ''',
 
         # build the Request
         headers = {
-            'Content-type': 'multipart/form-data; boundary=%s; charset=utf-8'
-            % boundary,
+            'Content-type': f'multipart/form-data; boundary={boundary}; charset=utf-8',
             'Content-length': str(len(body)),
         }
         req = urllib.request.Request(self.repository, body, headers)

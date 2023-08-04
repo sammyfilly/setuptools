@@ -50,7 +50,7 @@ class TestSpawn(support.TempdirManager):
         program_noeext = 'program'
         # Give the temporary program an ".exe" suffix for all.
         # It's needed on Windows and not harmful on other platforms.
-        program = program_noeext + ".exe"
+        program = f"{program_noeext}.exe"
 
         program_path = tmp_path / program
         program_path.write_text("")
@@ -73,7 +73,7 @@ class TestSpawn(support.TempdirManager):
             assert rv == program
 
         # test non-existent program
-        dont_exist_program = "dontexist_" + program
+        dont_exist_program = f"dontexist_{program}"
         rv = find_executable(dont_exist_program, path=tmp_dir)
         assert rv is None
 

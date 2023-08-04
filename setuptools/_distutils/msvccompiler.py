@@ -4,6 +4,7 @@ Contains MSVCCompiler, an implementation of the abstract CCompiler class
 for the Microsoft Visual Studio.
 """
 
+
 # Written by Perry Stoll
 # hacked by Robin Becker and Thomas Heller to do a better job of
 #   finding DevStudio (through the registry)
@@ -52,8 +53,6 @@ except ImportError:
             "Make sure that Python modules winreg, "
             "win32api or win32con are installed."
         )
-        pass
-
 if _can_read_reg:
     HKEYS = (
         hkey_mod.HKEY_USERS,
@@ -128,9 +127,8 @@ class MacroExpander:
 
     def set_macro(self, macro, path, key):
         for base in HKEYS:
-            d = read_values(base, path)
-            if d:
-                self.macros["$(%s)" % macro] = d[key]
+            if d := read_values(base, path):
+                self.macros[f"$({macro})"] = d[key]
                 break
 
     def load_macros(self, version):
@@ -159,7 +157,7 @@ you can try compiling with MingW32, by passing "-c mingw32" to setup.py."""
             except RegError:
                 continue
             key = RegEnumKey(h, 0)
-            d = read_values(base, r"{}\{}".format(p, key))
+            d = read_values(base, f"{p}\{key}")
             self.macros["$(FrameworkVersion)"] = d["version"]
 
     def sub(self, s):
@@ -184,14 +182,8 @@ def get_build_version():
     if majorVersion >= 13:
         # v13 was skipped and should be v14
         majorVersion += 1
-    minorVersion = int(s[2:3]) / 10.0
-    # I don't think paths are affected by minor version in version 6
-    if majorVersion == 6:
-        minorVersion = 0
-    if majorVersion >= 6:
-        return majorVersion + minorVersion
-    # else we don't know what version of the compiler this is
-    return None
+    minorVersion = 0 if majorVersion == 6 else int(s[2:3]) / 10.0
+    return majorVersion + minorVersion if majorVersion >= 6 else None
 
 
 def get_build_architecture():
@@ -263,10 +255,10 @@ class MSVCCompiler(CCompiler):
                 self.__macros = MacroExpander(self.__version)
             else:
                 self.__root = r"Software\Microsoft\Devstudio"
-            self.__product = "Visual Studio version %s" % self.__version
+            self.__product = f"Visual Studio version {self.__version}"
         else:
             # Win64. Assume this was built with the platform SDK
-            self.__product = "Microsoft SDK compiler %s" % (self.__version + 6)
+            self.__product = f"Microsoft SDK compiler {self.__version + 6}"
 
         self.initialized = False
 
@@ -367,12 +359,10 @@ class MSVCCompiler(CCompiler):
                 # Better to raise an exception instead of silently continuing
                 # and later complain about sources and targets having
                 # different lengths
-                raise CompileError("Don't know how to compile %s" % src_name)
+                raise CompileError(f"Don't know how to compile {src_name}")
             if strip_dir:
                 base = os.path.basename(base)
-            if ext in self._rc_extensions:
-                obj_names.append(os.path.join(output_dir, base + self.res_extension))
-            elif ext in self._mc_extensions:
+            if ext in self._rc_extensions or ext in self._mc_extensions:
                 obj_names.append(os.path.join(output_dir, base + self.res_extension))
             else:
                 obj_names.append(os.path.join(output_dir, base + self.obj_extension))
@@ -415,13 +405,13 @@ class MSVCCompiler(CCompiler):
                 src = os.path.abspath(src)
 
             if ext in self._c_extensions:
-                input_opt = "/Tc" + src
+                input_opt = f"/Tc{src}"
             elif ext in self._cpp_extensions:
-                input_opt = "/Tp" + src
+                input_opt = f"/Tp{src}"
             elif ext in self._rc_extensions:
                 # compile .RC to .RES file
                 input_opt = src
-                output_opt = "/fo" + obj
+                output_opt = f"/fo{obj}"
                 try:
                     self.spawn([self.rc] + pp_opts + [output_opt] + [input_opt])
                 except DistutilsExecError as msg:
@@ -445,20 +435,18 @@ class MSVCCompiler(CCompiler):
                     # first compile .MC to .RC and .H file
                     self.spawn([self.mc] + ['-h', h_dir, '-r', rc_dir] + [src])
                     base, _ = os.path.splitext(os.path.basename(src))
-                    rc_file = os.path.join(rc_dir, base + '.rc')
+                    rc_file = os.path.join(rc_dir, f'{base}.rc')
                     # then compile .RC to .RES file
-                    self.spawn([self.rc] + ["/fo" + obj] + [rc_file])
+                    self.spawn([self.rc] + [f"/fo{obj}"] + [rc_file])
 
                 except DistutilsExecError as msg:
                     raise CompileError(msg)
                 continue
             else:
                 # how to handle this file?
-                raise CompileError(
-                    "Don't know how to compile {} to {}".format(src, obj)
-                )
+                raise CompileError(f"Don't know how to compile {src} to {obj}")
 
-            output_opt = "/Fo" + obj
+            output_opt = f"/Fo{obj}"
             try:
                 self.spawn(
                     [self.cc]
@@ -481,9 +469,7 @@ class MSVCCompiler(CCompiler):
         output_filename = self.library_filename(output_libname, output_dir=output_dir)
 
         if self._need_link(objects, output_filename):
-            lib_args = objects + ['/OUT:' + output_filename]
-            if debug:
-                pass  # XXX what goes here?
+            lib_args = objects + [f'/OUT:{output_filename}']
             try:
                 self.spawn([self.lib] + lib_args)
             except DistutilsExecError as msg:
@@ -525,22 +511,16 @@ class MSVCCompiler(CCompiler):
 
         if self._need_link(objects, output_filename):
             if target_desc == CCompiler.EXECUTABLE:
-                if debug:
-                    ldflags = self.ldflags_shared_debug[1:]
-                else:
-                    ldflags = self.ldflags_shared[1:]
+                ldflags = self.ldflags_shared_debug[1:] if debug else self.ldflags_shared[1:]
             else:
-                if debug:
-                    ldflags = self.ldflags_shared_debug
-                else:
-                    ldflags = self.ldflags_shared
-
-            export_opts = []
-            for sym in export_symbols or []:
-                export_opts.append("/EXPORT:" + sym)
-
+                ldflags = self.ldflags_shared_debug if debug else self.ldflags_shared
+            export_opts = [f"/EXPORT:{sym}" for sym in export_symbols or []]
             ld_args = (
-                ldflags + lib_opts + export_opts + objects + ['/OUT:' + output_filename]
+                ldflags
+                + lib_opts
+                + export_opts
+                + objects
+                + [f'/OUT:{output_filename}']
             )
 
             # The MSVC linker generates .lib and .exp files, which cannot be
@@ -555,7 +535,7 @@ class MSVCCompiler(CCompiler):
                 implib_file = os.path.join(
                     os.path.dirname(objects[0]), self.library_filename(dll_name)
                 )
-                ld_args.append('/IMPLIB:' + implib_file)
+                ld_args.append(f'/IMPLIB:{implib_file}')
 
             if extra_preargs:
                 ld_args[:0] = extra_preargs
@@ -576,7 +556,7 @@ class MSVCCompiler(CCompiler):
     # ccompiler.py.
 
     def library_dir_option(self, dir):
-        return "/LIBPATH:" + dir
+        return f"/LIBPATH:{dir}"
 
     def runtime_library_dir_option(self, dir):
         raise DistutilsPlatformError(
@@ -589,10 +569,7 @@ class MSVCCompiler(CCompiler):
     def find_library_file(self, dirs, lib, debug=0):
         # Prefer a debugging library if found (and requested), but deal
         # with it if we don't have one.
-        if debug:
-            try_names = [lib + "_d", lib]
-        else:
-            try_names = [lib]
+        try_names = [f"{lib}_d", lib] if debug else [lib]
         for dir in dirs:
             for name in try_names:
                 libfile = os.path.join(dir, self.library_filename(name))
@@ -635,7 +612,7 @@ class MSVCCompiler(CCompiler):
         if not _can_read_reg:
             return []
 
-        path = path + " dirs"
+        path = f"{path} dirs"
         if self.__version >= 7:
             key = r"{}\{:0.1f}\VC\VC_OBJECTS_PLATFORM_INFO\Win32\Directories".format(
                 self.__root,
@@ -648,8 +625,7 @@ class MSVCCompiler(CCompiler):
             )
 
         for base in HKEYS:
-            d = read_values(base, key)
-            if d:
+            if d := read_values(base, key):
                 if self.__version >= 7:
                     return self.__macros.sub(d[path]).split(";")
                 else:

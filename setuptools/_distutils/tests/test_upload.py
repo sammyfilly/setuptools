@@ -45,10 +45,7 @@ username:me
 class FakeOpen:
     def __init__(self, url, msg=None, code=None):
         self.url = url
-        if not isinstance(url, str):
-            self.req = url
-        else:
-            self.req = None
+        self.req = url if not isinstance(url, str) else None
         self.msg = msg or 'OK'
         self.code = code or 200
 

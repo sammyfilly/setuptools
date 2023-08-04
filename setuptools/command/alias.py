@@ -8,9 +8,7 @@ def shquote(arg):
     for c in '"', "'", "\\", "#":
         if c in arg:
             return repr(arg)
-    if arg.split() != [arg]:
-        return repr(arg)
-    return arg
+    return repr(arg) if arg.split() != [arg] else arg
 
 
 class alias(option_base):

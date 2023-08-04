@@ -50,13 +50,13 @@ def _iglob(pathname, recursive):
     glob_in_dir = glob2 if recursive and _isrecursive(basename) else glob1
 
     if not has_magic(pathname):
-        if basename:
-            if os.path.lexists(pathname):
-                yield pathname
-        else:
-            # Patterns ending with a slash should match only directories
-            if os.path.isdir(dirname):
-                yield pathname
+        if (
+            basename
+            and os.path.lexists(pathname)
+            or not basename
+            and os.path.isdir(dirname)
+        ):
+            yield pathname
         return
 
     if not dirname:
@@ -95,14 +95,11 @@ def glob1(dirname, pattern):
 
 
 def glob0(dirname, basename):
-    if not basename:
-        # `os.path.split()` returns an empty basename for paths ending with a
-        # directory separator.  'q*x/' should match only directories.
-        if os.path.isdir(dirname):
-            return [basename]
-    else:
+    if basename:
         if os.path.lexists(os.path.join(dirname, basename)):
             return [basename]
+    elif os.path.isdir(dirname):
+        return [basename]
     return []
 
 
@@ -113,8 +110,7 @@ def glob0(dirname, basename):
 def glob2(dirname, pattern):
     assert _isrecursive(pattern)
     yield pattern[:0]
-    for x in _rlistdir(dirname):
-        yield x
+    yield from _rlistdir(dirname)
 
 
 # Recursively yields relative pathnames inside a literal directory.
@@ -148,10 +144,7 @@ def has_magic(s):
 
 
 def _isrecursive(pattern):
-    if isinstance(pattern, bytes):
-        return pattern == b'**'
-    else:
-        return pattern == '**'
+    return pattern == b'**' if isinstance(pattern, bytes) else pattern == '**'
 
 
 def escape(pathname):

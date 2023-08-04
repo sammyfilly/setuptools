@@ -70,32 +70,24 @@ def rfc822_unescape(content: str) -> str:
 def _read_field_from_msg(msg: "Message", field: str) -> Optional[str]:
     """Read Message header field."""
     value = msg[field]
-    if value == 'UNKNOWN':
-        return None
-    return value
+    return None if value == 'UNKNOWN' else value
 
 
 def _read_field_unescaped_from_msg(msg: "Message", field: str) -> Optional[str]:
     """Read Message header field and apply rfc822_unescape."""
     value = _read_field_from_msg(msg, field)
-    if value is None:
-        return value
-    return rfc822_unescape(value)
+    return value if value is None else rfc822_unescape(value)
 
 
 def _read_list_from_msg(msg: "Message", field: str) -> Optional[List[str]]:
     """Read Message header field and return all results as list."""
     values = msg.get_all(field, None)
-    if values == []:
-        return None
-    return values
+    return None if values == [] else values
 
 
 def _read_payload_from_msg(msg: "Message") -> Optional[str]:
     value = msg.get_payload().strip()
-    if value == 'UNKNOWN' or not value:
-        return None
-    return value
+    return None if value == 'UNKNOWN' or not value else value
 
 
 def read_pkg_file(self, file):
@@ -517,9 +509,7 @@ class Distribution(_Distribution):
             for key in vars(self.metadata)
             if getattr(self.metadata, key, None) is not None
         }
-        missing = required - provided
-
-        if missing:
+        if missing := required - provided:
             msg = f"Required package metadata is missing: {missing}"
             raise DistutilsSetupError(msg)
 
@@ -581,11 +571,7 @@ class Distribution(_Distribution):
             # Save original before it is messed by _convert_extras_requirements
             self._orig_extras_require = self._orig_extras_require or self.extras_require
             for extra in self.extras_require.keys():
-                # Since this gets called multiple times at points where the
-                # keys have become 'converted' extras, ensure that we are only
-                # truly adding extras we haven't seen before here.
-                extra = extra.split(':')[0]
-                if extra:
+                if extra := extra.split(':')[0]:
                     self.metadata.provides_extras.add(extra)
 
         if getattr(self, 'install_requires', None) and not self._orig_install_requires:
@@ -617,7 +603,7 @@ class Distribution(_Distribution):
         For a requirement, return the 'extras_require' suffix for
         that requirement.
         """
-        return ':' + str(req.marker) if req.marker else ''
+        return f':{str(req.marker)}' if req.marker else ''
 
     def _move_install_requirements_markers(self):
         """
@@ -639,12 +625,11 @@ class Distribution(_Distribution):
         self.install_requires = list(map(str, simple_reqs))
 
         for r in complex_reqs:
-            self._tmp_extras_require[':' + str(r.marker)].append(r)
-        self.extras_require = dict(
-            # list(dict.fromkeys(...))  ensures a list of unique strings
-            (k, list(dict.fromkeys(str(r) for r in map(self._clean_req, v))))
+            self._tmp_extras_require[f':{str(r.marker)}'].append(r)
+        self.extras_require = {
+            k: list(dict.fromkeys(str(r) for r in map(self._clean_req, v)))
             for k, v in self._tmp_extras_require.items()
-        )
+        }
 
     def _clean_req(self, req):
         """
@@ -826,7 +811,7 @@ class Distribution(_Distribution):
         return lowercase_opt
 
     # FIXME: 'Distribution._set_command_options' is too complex (14)
-    def _set_command_options(self, command_obj, option_dict=None):  # noqa: C901
+    def _set_command_options(self, command_obj, option_dict=None):    # noqa: C901
         """
         Set the options for 'command_obj' from 'option_dict'.  Basically
         this means copying elements of a dictionary ('option_dict') to
@@ -843,10 +828,10 @@ class Distribution(_Distribution):
             option_dict = self.get_option_dict(command_name)
 
         if DEBUG:
-            self.announce("  setting options for '%s' command:" % command_name)
+            self.announce(f"  setting options for '{command_name}' command:")
         for option, (source, value) in option_dict.items():
             if DEBUG:
-                self.announce("    %s = %s (from %s)" % (option, value, source))
+                self.announce(f"    {option} = {value} (from {source})")
             try:
                 bool_opts = [translate_longopt(o) for o in command_obj.boolean_options]
             except AttributeError:
@@ -866,8 +851,7 @@ class Distribution(_Distribution):
                     setattr(command_obj, option, value)
                 else:
                     raise DistutilsOptionError(
-                        "error in %s: command '%s' has no such option '%s'"
-                        % (source, command_name, option)
+                        f"error in {source}: command '{command_name}' has no such option '{option}'"
                     )
             except ValueError as e:
                 raise DistutilsOptionError(e) from e
@@ -1012,8 +996,7 @@ class Distribution(_Distribution):
         handle whatever special inclusion logic is needed.
         """
         for k, v in attrs.items():
-            include = getattr(self, '_include_' + k, None)
-            if include:
+            if include := getattr(self, f'_include_{k}', None):
                 include(v)
             else:
                 self._include_misc(k, v)
@@ -1021,7 +1004,7 @@ class Distribution(_Distribution):
     def exclude_package(self, package):
         """Remove packages, modules, and extensions in named package"""
 
-        pfx = package + '.'
+        pfx = f'{package}.'
         if self.packages:
             self.packages = [
                 p for p in self.packages if p != package and not p.startswith(pfx)
@@ -1042,7 +1025,7 @@ class Distribution(_Distribution):
     def has_contents_for(self, package):
         """Return true if 'exclude_package(package)' would do something"""
 
-        pfx = package + '.'
+        pfx = f'{package}.'
 
         for p in self.iter_distribution_names():
             if p == package or p.startswith(pfx):
@@ -1057,10 +1040,10 @@ class Distribution(_Distribution):
         try:
             old = getattr(self, name)
         except AttributeError as e:
-            raise DistutilsSetupError("%s: No such distribution setting" % name) from e
+            raise DistutilsSetupError(f"{name}: No such distribution setting") from e
         if old is not None and not isinstance(old, sequence):
             raise DistutilsSetupError(
-                name + ": this setting cannot be changed via include/exclude"
+                f"{name}: this setting cannot be changed via include/exclude"
             )
         elif old:
             setattr(self, name, [item for item in old if item not in value])
@@ -1073,12 +1056,12 @@ class Distribution(_Distribution):
         try:
             old = getattr(self, name)
         except AttributeError as e:
-            raise DistutilsSetupError("%s: No such distribution setting" % name) from e
+            raise DistutilsSetupError(f"{name}: No such distribution setting") from e
         if old is None:
             setattr(self, name, value)
         elif not isinstance(old, sequence):
             raise DistutilsSetupError(
-                name + ": this setting cannot be changed via include/exclude"
+                f"{name}: this setting cannot be changed via include/exclude"
             )
         else:
             new = [item for item in value if item not in old]
@@ -1101,8 +1084,7 @@ class Distribution(_Distribution):
         handle whatever special exclusion logic is needed.
         """
         for k, v in attrs.items():
-            exclude = getattr(self, '_exclude_' + k, None)
-            if exclude:
+            if exclude := getattr(self, f'_exclude_{k}', None):
                 exclude(v)
             else:
                 self._exclude_misc(k, v)
@@ -1182,12 +1164,8 @@ class Distribution(_Distribution):
     def iter_distribution_names(self):
         """Yield all packages, modules, and extension names in distribution"""
 
-        for pkg in self.packages or ():
-            yield pkg
-
-        for module in self.py_modules or ():
-            yield module
-
+        yield from self.packages or ()
+        yield from self.py_modules or ()
         for ext in self.ext_modules or ():
             if isinstance(ext, tuple):
                 name, buildinfo = ext

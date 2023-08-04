@@ -11,11 +11,7 @@ def _pythonlib_compat():
     if not sysconfig.get_config_var('Py_ENABLED_SHARED'):
         return
 
-    yield 'python{}.{}{}'.format(
-        sys.hexversion >> 24,
-        (sys.hexversion >> 16) & 0xFF,
-        sysconfig.get_config_var('ABIFLAGS'),
-    )
+    yield f"python{sys.hexversion >> 24}.{sys.hexversion >> 16 & 255}{sysconfig.get_config_var('ABIFLAGS')}"
 
 
 def compose(f1, f2):

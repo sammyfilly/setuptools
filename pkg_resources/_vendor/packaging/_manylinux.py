@@ -155,15 +155,13 @@ def _parse_glibc_version(version_str: str) -> Tuple[int, int]:
             RuntimeWarning,
         )
         return -1, -1
-    return int(m.group("major")), int(m.group("minor"))
+    return int(m["major"]), int(m["minor"])
 
 
 @functools.lru_cache()
 def _get_glibc_version() -> Tuple[int, int]:
     version_str = _glibc_version_string()
-    if version_str is None:
-        return (-1, -1)
-    return _parse_glibc_version(version_str)
+    return (-1, -1) if version_str is None else _parse_glibc_version(version_str)
 
 
 # From PEP 513, PEP 600
@@ -178,9 +176,7 @@ def _is_compatible(name: str, arch: str, version: _GLibCVersion) -> bool:
         return True
     if hasattr(_manylinux, "manylinux_compatible"):
         result = _manylinux.manylinux_compatible(version[0], version[1], arch)
-        if result is not None:
-            return bool(result)
-        return True
+        return bool(result) if result is not None else True
     if version == _GLibCVersion(2, 5):
         if hasattr(_manylinux, "manylinux1_compatible"):
             return bool(_manylinux.manylinux1_compatible)

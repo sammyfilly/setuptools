@@ -74,8 +74,7 @@ class SetuptoolsWarning(UserWarning):
             ),
             (f"\nSee {see_url} for details." if see_url else None),
         ]
-        parts = [x for x in possible_parts if x]
-        if parts:
+        if parts := [x for x in possible_parts if x]:
             body = indent(_TEMPLATE.format(details="\n".join(parts)), _INDENT)
             return "\n".join([summary, "!!\n", body, "\n!!"])
         return summary

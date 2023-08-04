@@ -95,7 +95,7 @@ class build_scripts(Command):
         else:
             first_line = f.readline()
             if not first_line:
-                self.warn("%s is an empty file (skipping)" % script)
+                self.warn(f"{script} is an empty file (skipping)")
                 return
 
             shebang_match = shebang_pattern.match(first_line)
@@ -109,14 +109,10 @@ class build_scripts(Command):
                 else:
                     executable = os.path.join(
                         sysconfig.get_config_var("BINDIR"),
-                        "python%s%s"
-                        % (
-                            sysconfig.get_config_var("VERSION"),
-                            sysconfig.get_config_var("EXE"),
-                        ),
+                        f'python{sysconfig.get_config_var("VERSION")}{sysconfig.get_config_var("EXE")}',
                     )
                 post_interp = shebang_match.group(1) or ''
-                shebang = "#!" + executable + post_interp + "\n"
+                shebang = f"#!{executable}{post_interp}" + "\n"
                 self._validate_shebang(shebang, f.encoding)
                 with open(outfile, "w", encoding=f.encoding) as outf:
                     outf.write(shebang)

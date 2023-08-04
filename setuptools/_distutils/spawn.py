@@ -15,7 +15,7 @@ from .debug import DEBUG
 from ._log import log
 
 
-def spawn(cmd, search_path=1, verbose=0, dry_run=0, env=None):  # noqa: C901
+def spawn(cmd, search_path=1, verbose=0, dry_run=0, env=None):    # noqa: C901
     """Run another program, specified as a command list 'cmd', in a new process.
 
     'cmd' is just the argument list for the new process, ie.
@@ -49,8 +49,7 @@ def spawn(cmd, search_path=1, verbose=0, dry_run=0, env=None):  # noqa: C901
     if sys.platform == 'darwin':
         from distutils.util import MACOSX_VERSION_VAR, get_macosx_target_ver
 
-        macosx_target_ver = get_macosx_target_ver()
-        if macosx_target_ver:
+        if macosx_target_ver := get_macosx_target_ver():
             env[MACOSX_VERSION_VAR] = macosx_target_ver
 
     try:
@@ -80,22 +79,22 @@ def find_executable(executable, path=None):
     """
     _, ext = os.path.splitext(executable)
     if (sys.platform == 'win32') and (ext != '.exe'):
-        executable = executable + '.exe'
+        executable = f'{executable}.exe'
 
     if os.path.isfile(executable):
         return executable
 
     if path is None:
         path = os.environ.get('PATH', None)
-        if path is None:
-            try:
-                path = os.confstr("CS_PATH")
-            except (AttributeError, ValueError):
-                # os.confstr() or CS_PATH is not available
-                path = os.defpath
-        # bpo-35755: Don't use os.defpath if the PATH environment variable is
-        # set to an empty string
+            # bpo-35755: Don't use os.defpath if the PATH environment variable is
+            # set to an empty string
 
+    if path is None:
+        try:
+            path = os.confstr("CS_PATH")
+        except (AttributeError, ValueError):
+            # os.confstr() or CS_PATH is not available
+            path = os.defpath
     # PATH='' doesn't match, whereas PATH=':' looks in the current directory
     if not path:
         return None

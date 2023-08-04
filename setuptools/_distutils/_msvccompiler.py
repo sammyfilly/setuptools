@@ -101,10 +101,7 @@ def _find_vc2017():
         return None, None
 
     path = os.path.join(path, "VC", "Auxiliary", "Build")
-    if os.path.isdir(path):
-        return 15, path
-
-    return None, None
+    return (15, path) if os.path.isdir(path) else (None, None)
 
 
 PLAT_SPEC_TO_RUNTIME = {
@@ -151,13 +148,11 @@ def _get_vc_env(plat_spec):
         log.error(exc.output)
         raise DistutilsPlatformError(f"Error executing {exc.cmd}")
 
-    env = {
+    return {
         key.lower(): value
         for key, _, value in (line.partition('=') for line in out.splitlines())
         if key and value
     }
-
-    return env
 
 
 def _find_exe(exe, paths=None):
@@ -367,14 +362,14 @@ class MSVCCompiler(CCompiler):
                 src = os.path.abspath(src)
 
             if ext in self._c_extensions:
-                input_opt = "/Tc" + src
+                input_opt = f"/Tc{src}"
             elif ext in self._cpp_extensions:
-                input_opt = "/Tp" + src
+                input_opt = f"/Tp{src}"
                 add_cpp_opts = True
             elif ext in self._rc_extensions:
                 # compile .RC to .RES file
                 input_opt = src
-                output_opt = "/fo" + obj
+                output_opt = f"/fo{obj}"
                 try:
                     self.spawn([self.rc] + pp_opts + [output_opt, input_opt])
                 except DistutilsExecError as msg:
@@ -398,9 +393,9 @@ class MSVCCompiler(CCompiler):
                     # first compile .MC to .RC and .H file
                     self.spawn([self.mc, '-h', h_dir, '-r', rc_dir, src])
                     base, _ = os.path.splitext(os.path.basename(src))
-                    rc_file = os.path.join(rc_dir, base + '.rc')
+                    rc_file = os.path.join(rc_dir, f'{base}.rc')
                     # then compile .RC to .RES file
-                    self.spawn([self.rc, "/fo" + obj, rc_file])
+                    self.spawn([self.rc, f"/fo{obj}", rc_file])
 
                 except DistutilsExecError as msg:
                     raise CompileError(msg)
@@ -412,7 +407,7 @@ class MSVCCompiler(CCompiler):
             args = [self.cc] + compile_opts + pp_opts
             if add_cpp_opts:
                 args.append('/EHsc')
-            args.extend((input_opt, "/Fo" + obj))
+            args.extend((input_opt, f"/Fo{obj}"))
             args.extend(extra_postargs)
 
             try:
@@ -431,9 +426,7 @@ class MSVCCompiler(CCompiler):
         output_filename = self.library_filename(output_libname, output_dir=output_dir)
 
         if self._need_link(objects, output_filename):
-            lib_args = objects + ['/OUT:' + output_filename]
-            if debug:
-                pass  # XXX what goes here?
+            lib_args = objects + [f'/OUT:{output_filename}']
             try:
                 log.debug('Executing "%s" %s', self.lib, ' '.join(lib_args))
                 self.spawn([self.lib] + lib_args)
@@ -477,10 +470,14 @@ class MSVCCompiler(CCompiler):
         if self._need_link(objects, output_filename):
             ldflags = self._ldflags[target_desc, debug]
 
-            export_opts = ["/EXPORT:" + sym for sym in (export_symbols or [])]
+            export_opts = [f"/EXPORT:{sym}" for sym in (export_symbols or [])]
 
             ld_args = (
-                ldflags + lib_opts + export_opts + objects + ['/OUT:' + output_filename]
+                ldflags
+                + lib_opts
+                + export_opts
+                + objects
+                + [f'/OUT:{output_filename}']
             )
 
             # The MSVC linker generates .lib and .exp files, which cannot be
@@ -494,7 +491,7 @@ class MSVCCompiler(CCompiler):
                     os.path.basename(output_filename)
                 )
                 implib_file = os.path.join(build_temp, self.library_filename(dll_name))
-                ld_args.append('/IMPLIB:' + implib_file)
+                ld_args.append(f'/IMPLIB:{implib_file}')
 
             if extra_preargs:
                 ld_args[:0] = extra_preargs
@@ -541,7 +538,7 @@ class MSVCCompiler(CCompiler):
     # ccompiler.py.
 
     def library_dir_option(self, dir):
-        return "/LIBPATH:" + dir
+        return f"/LIBPATH:{dir}"
 
     def runtime_library_dir_option(self, dir):
         raise DistutilsPlatformError(
@@ -554,10 +551,7 @@ class MSVCCompiler(CCompiler):
     def find_library_file(self, dirs, lib, debug=0):
         # Prefer a debugging library if found (and requested), but deal
         # with it if we don't have one.
-        if debug:
-            try_names = [lib + "_d", lib]
-        else:
-            try_names = [lib]
+        try_names = [f"{lib}_d", lib] if debug else [lib]
         for dir in dirs:
             for name in try_names:
                 libfile = os.path.join(dir, self.library_filename(name))

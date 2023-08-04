@@ -206,7 +206,7 @@ class TestInstall(
         found = [os.path.basename(line) for line in content.splitlines()]
         expected = [
             'hello.py',
-            'hello.%s.pyc' % sys.implementation.cache_tag,
+            f'hello.{sys.implementation.cache_tag}.pyc',
             'sayhi',
             'UNKNOWN-0.0.0-py%s.%s.egg-info' % sys.version_info[:2],
         ]

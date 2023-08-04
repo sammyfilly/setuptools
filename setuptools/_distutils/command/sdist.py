@@ -25,9 +25,10 @@ def show_formats():
     from ..fancy_getopt import FancyGetopt
     from ..archive_util import ARCHIVE_FORMATS
 
-    formats = []
-    for format in ARCHIVE_FORMATS.keys():
-        formats.append(("formats=" + format, None, ARCHIVE_FORMATS[format][2]))
+    formats = [
+        (f"formats={format}", None, ARCHIVE_FORMATS[format][2])
+        for format in ARCHIVE_FORMATS.keys()
+    ]
     formats.sort()
     FancyGetopt(formats).print_help("List of available source distribution formats:")
 
@@ -149,9 +150,8 @@ class sdist(Command):
 
         self.ensure_string_list('formats')
 
-        bad_format = archive_util.check_archive_formats(self.formats)
-        if bad_format:
-            raise DistutilsOptionError("unknown archive format '%s'" % bad_format)
+        if bad_format := archive_util.check_archive_formats(self.formats):
+            raise DistutilsOptionError(f"unknown archive format '{bad_format}'")
 
         if self.dist_dir is None:
             self.dist_dir = "dist"
@@ -285,11 +285,10 @@ class sdist(Command):
                     self.warn(
                         "standard file not found: should have one of " + ', '.join(alts)
                     )
+            elif self._cs_path_exists(fn):
+                self.filelist.append(fn)
             else:
-                if self._cs_path_exists(fn):
-                    self.filelist.append(fn)
-                else:
-                    self.warn("standard file '%s' not found" % fn)
+                self.warn(f"standard file '{fn}' not found")
 
     def _add_defaults_optional(self):
         optional = ['tests/test*.py', 'test/test*.py', 'setup.cfg']
@@ -315,20 +314,21 @@ class sdist(Command):
 
     def _add_defaults_data_files(self):
         # getting distribution.data_files
-        if self.distribution.has_data_files():
-            for item in self.distribution.data_files:
-                if isinstance(item, str):
-                    # plain file
-                    item = convert_path(item)
-                    if os.path.isfile(item):
-                        self.filelist.append(item)
-                else:
-                    # a (dirname, filenames) tuple
-                    dirname, filenames = item
-                    for f in filenames:
-                        f = convert_path(f)
-                        if os.path.isfile(f):
-                            self.filelist.append(f)
+        if not self.distribution.has_data_files():
+            return
+        for item in self.distribution.data_files:
+            if isinstance(item, str):
+                # plain file
+                item = convert_path(item)
+                if os.path.isfile(item):
+                    self.filelist.append(item)
+            else:
+                # a (dirname, filenames) tuple
+                dirname, filenames = item
+                for f in filenames:
+                    f = convert_path(f)
+                    if os.path.isfile(f):
+                        self.filelist.append(f)
 
     def _add_defaults_ext(self):
         if self.distribution.has_ext_modules():
@@ -395,13 +395,9 @@ class sdist(Command):
         self.filelist.exclude_pattern(None, prefix=build.build_base)
         self.filelist.exclude_pattern(None, prefix=base_dir)
 
-        if sys.platform == 'win32':
-            seps = r'/|\\'
-        else:
-            seps = '/'
-
+        seps = r'/|\\' if sys.platform == 'win32' else '/'
         vcs_dirs = ['RCS', 'CVS', r'\.svn', r'\.hg', r'\.git', r'\.bzr', '_darcs']
-        vcs_ptrn = r'(^|{})({})({}).*'.format(seps, '|'.join(vcs_dirs), seps)
+        vcs_ptrn = f"(^|{seps})({'|'.join(vcs_dirs)})({seps}).*"
         self.filelist.exclude_pattern(vcs_ptrn, is_regex=1)
 
     def write_manifest(self):
@@ -421,7 +417,7 @@ class sdist(Command):
         self.execute(
             file_util.write_file,
             (self.manifest, content),
-            "writing manifest file '%s'" % self.manifest,
+            f"writing manifest file '{self.manifest}'",
         )
 
     def _manifest_is_not_generated(self):
@@ -474,10 +470,10 @@ class sdist(Command):
 
         if hasattr(os, 'link'):  # can make hard links on this system
             link = 'hard'
-            msg = "making hard links in %s..." % base_dir
+            msg = f"making hard links in {base_dir}..."
         else:  # nope, have to copy
             link = None
-            msg = "copying files to %s..." % base_dir
+            msg = f"copying files to {base_dir}..."
 
         if not files:
             log.warning("no files to distribute -- empty manifest?")
