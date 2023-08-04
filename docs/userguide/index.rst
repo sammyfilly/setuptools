@@ -46,3 +46,11 @@ Contents
    Unfortunately, this jargon might be a bit confusing for new users because the term package
    can also to refer any :term:`directory <package>` (or sub directory) used to organize
    :term:`modules <module>` and auxiliary files.
+Documentation#
+Setuptools is a fully-featured, actively-maintained, and stable library designed to facilitate packaging Python projects.
+
+It helps developers to easily share reusable code (in the form of a library) and programs (e.g., CLI/GUI tools implemented in Python), that can be installed with pip and uploaded to PyPI.
+
+For Enterprise
+ Tidelift
+Professional support for setuptools is available as part of the Tidelift Subscription. Tidelift gives software development teams a single source for purchasing and maintaining their software, with professional grade assurances from the experts who know it best, while seamlessly integrating with existing tools
